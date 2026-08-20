@@ -554,10 +554,10 @@ else:
 ```
 
 ### Checklist
-- [ ] `src/exocortex/ingestion.py` exists with all specified functions
-- [ ] `extract_text_from_pdf()` correctly extracts text page by page
-- [ ] `chunk_text()` splits text into chunks with correct overlap
-- [ ] Each `Chunk` has correct metadata (document_id, filename, page_numbers, chunk_index)
-- [ ] Error handling: FileNotFoundError, ValueError for invalid inputs
-- [ ] `tests/test_ingestion.py` — all unit tests pass
-- [ ] Integration test passes with a real PDF (if available)
+- [X] `src/exocortex/ingestion.py` exists with all specified functions
+- [X] `extract_text_from_pdf()` correctly extracts text page by page
+- [X] `chunk_text()` splits text into chunks with correct overlap
+- [X] Each `Chunk` has correct metadata (document_id, filename, page_numbers, chunk_index)
+- [X] Error handling: FileNotFoundError, ValueError for invalid inputs
+- [X] `tests/test_ingestion.py` — all unit tests pass
+- [X] Integration test passes with a real PDF (if available)

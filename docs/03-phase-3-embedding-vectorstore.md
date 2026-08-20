@@ -715,14 +715,14 @@ First 5 values: [0.123..., -0.456..., ...]
 ```
 
 ### Checklist
-- [ ] `src/exocortex/embedding.py` exists with `EmbeddingClient` class
-- [ ] `src/exocortex/vectorstore.py` exists with `VectorStore` class
-- [ ] `EmbeddingClient.embed_documents()` returns 1024-dim vectors
-- [ ] `EmbeddingClient.embed_query()` prepends instruction prefix
-- [ ] `EmbeddingClient.health_check()` verifies Ollama + model availability
-- [ ] `VectorStore` uses ChromaDB persistent mode
-- [ ] `VectorStore.add_chunks()` stores chunks with embeddings and metadata
-- [ ] `VectorStore.query()` returns `SearchResult` objects sorted by similarity
-- [ ] `VectorStore.list_documents()` returns unique documents with chunk counts
-- [ ] `VectorStore.delete_document()` removes all chunks for a document
-- [ ] All tests pass
+- [X] `src/exocortex/embedding.py` exists with `EmbeddingClient` class
+- [X] `src/exocortex/vectorstore.py` exists with `VectorStore` class
+- [X] `EmbeddingClient.embed_documents()` returns 1024-dim vectors
+- [X] `EmbeddingClient.embed_query()` prepends instruction prefix
+- [X] `EmbeddingClient.health_check()` verifies Ollama + model availability
+- [X] `VectorStore` uses ChromaDB persistent mode
+- [X] `VectorStore.add_chunks()` stores chunks with embeddings and metadata
+- [X] `VectorStore.query()` returns `SearchResult` objects sorted by similarity
+- [X] `VectorStore.list_documents()` returns unique documents with chunk counts
+- [X] `VectorStore.delete_document()` removes all chunks for a document
+- [X] All tests pass
