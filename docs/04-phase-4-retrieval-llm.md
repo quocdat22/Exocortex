@@ -626,12 +626,12 @@ print(f'Chunks used: {response.num_chunks_retrieved}')
 **Expected:** The LLM returns an answer that is clearly derived from the ebook content, with source citations.
 
 ### Checklist
-- [ ] `src/exocortex/llm.py` exists with `LLMClient` class
-- [ ] `src/exocortex/retrieval.py` exists with `RAGEngine` class
-- [ ] System prompt enforces context-only answers
-- [ ] Query embedding uses instruction prefix
-- [ ] LLM response includes source attribution
-- [ ] `RAGEngine.query()` returns `QueryResponse` with answer + sources
-- [ ] `RAGEngine.ingest_and_index()` combines ingestion + embedding + storage
-- [ ] All unit tests pass
-- [ ] Full pipeline works end-to-end (manual test)
+- [x] `src/exocortex/llm.py` exists with `LLMClient` class
+- [x] `src/exocortex/retrieval.py` exists with `RAGEngine` class
+- [x] System prompt enforces context-only answers
+- [x] Query embedding uses instruction prefix
+- [x] LLM response includes source attribution
+- [x] `RAGEngine.query()` returns `QueryResponse` with answer + sources
+- [x] `RAGEngine.ingest_and_index()` combines ingestion + embedding + storage
+- [x] All unit tests pass
+- [x] Full pipeline works end-to-end (manual test)
