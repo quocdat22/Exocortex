@@ -5,6 +5,8 @@ Provides endpoints for:
 - PDF ingestion (upload → parse → embed → store)
 - Querying (question → retrieve → LLM answer)
 - Document management (list, delete)
+- Session management (create, list, get, delete)
+- Conversational chat (multi-turn RAG with query rewriting)
 """
 
 from __future__ import annotations
@@ -107,6 +109,80 @@ class HealthResponse(BaseModel):
     chromadb: bool
     llm: bool
     details: dict
+
+
+class CreateSessionRequest(BaseModel):
+    """Request body for POST /sessions."""
+
+    title: str | None = Field(None, description="Optional title for the session")
+
+
+class ChatRequest(BaseModel):
+    """Request body for POST /sessions/{session_id}/chat."""
+
+    question: str = Field(..., min_length=1, description="Follow-up or initial question")
+
+
+class MessageModel(BaseModel):
+    """Message representation in session detail responses."""
+
+    id: str
+    session_id: str
+    role: str
+    content: str
+    standalone_query: str | None = None
+    needs_retrieval: bool = True
+    sources: list[dict] = []
+    model: str | None = None
+    usage: dict | None = None
+    created_at: str
+
+
+class SessionSummaryModel(BaseModel):
+    """Summary representation for session listing."""
+
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+
+
+class SessionDetailResponse(BaseModel):
+    """Detailed response for a session including its messages."""
+
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+    messages: list[MessageModel] = []
+
+
+class SessionListResponse(BaseModel):
+    """Response body for GET /sessions."""
+
+    sessions: list[SessionSummaryModel]
+    total_sessions: int
+
+
+class DeleteSessionResponse(BaseModel):
+    """Response body for DELETE /sessions/{session_id}."""
+
+    session_id: str
+    message: str
+
+
+class ChatResponseModel(BaseModel):
+    """Response body for POST /sessions/{session_id}/chat."""
+
+    answer: str
+    sources: list[dict]
+    query: str
+    standalone_query: str
+    needs_retrieval: bool
+    session_id: str
+    num_chunks_retrieved: int
+    model: str
+    usage: dict | None = None
 
 
 # --- Lifespan ---
@@ -312,3 +388,110 @@ async def delete_document(document_id: str):
         chunks_deleted=deleted,
         message=f"Deleted {deleted} chunks for document '{document_id}'",
     )
+
+
+# --- Session Endpoints ---
+
+
+@app.post("/sessions", response_model=SessionDetailResponse)
+async def create_session(request: CreateSessionRequest = CreateSessionRequest()):
+    """Create a new chat session."""
+    engine = get_engine()
+    session = engine.session_store.create_session(title=request.title)
+    return SessionDetailResponse(
+        id=session.id,
+        title=session.title,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        messages=[],
+    )
+
+
+@app.get("/sessions", response_model=SessionListResponse)
+async def list_sessions():
+    """List all chat sessions."""
+    engine = get_engine()
+    sessions = engine.session_store.list_sessions()
+    return SessionListResponse(
+        sessions=[
+            SessionSummaryModel(
+                id=s.id,
+                title=s.title,
+                created_at=s.created_at,
+                updated_at=s.updated_at,
+            )
+            for s in sessions
+        ],
+        total_sessions=len(sessions),
+    )
+
+
+@app.get("/sessions/{session_id}", response_model=SessionDetailResponse)
+async def get_session(session_id: str):
+    """Get details and message history of a specific session."""
+    engine = get_engine()
+    session = engine.session_store.get_session(session_id, include_messages=True)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+
+    return SessionDetailResponse(
+        id=session.id,
+        title=session.title,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        messages=[
+            MessageModel(
+                id=m.id,
+                session_id=m.session_id,
+                role=m.role,
+                content=m.content,
+                standalone_query=m.standalone_query,
+                needs_retrieval=m.needs_retrieval,
+                sources=m.sources,
+                model=m.model,
+                usage=m.usage,
+                created_at=m.created_at,
+            )
+            for m in session.messages
+        ],
+    )
+
+
+@app.delete("/sessions/{session_id}", response_model=DeleteSessionResponse)
+async def delete_session(session_id: str):
+    """Delete a chat session and all its messages."""
+    engine = get_engine()
+    ok = engine.session_store.delete_session(session_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    return DeleteSessionResponse(
+        session_id=session_id,
+        message=f"Session '{session_id}' deleted successfully",
+    )
+
+
+@app.post("/sessions/{session_id}/chat", response_model=ChatResponseModel)
+async def session_chat(session_id: str, request: ChatRequest):
+    """Send a question to a conversational session."""
+    engine = get_engine()
+    try:
+        response = engine.chat(session_id=session_id, question=request.question)
+        return ChatResponseModel(
+            answer=response.answer,
+            sources=response.sources,
+            query=response.query,
+            standalone_query=response.standalone_query,
+            needs_retrieval=response.needs_retrieval,
+            session_id=response.session_id,
+            num_chunks_retrieved=response.num_chunks_retrieved,
+            model=response.model,
+            usage=response.usage,
+        )
+    except ConnectionError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.error(f"Session chat failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Chat failed: {e}")
+

@@ -165,6 +165,109 @@ def test_delete_nonexistent_document(client):
     assert response.status_code == 404
 
 
+# --- Session endpoints ---
+
+
+def test_create_and_list_sessions_endpoints(client):
+    """POST /sessions and GET /sessions should manage chat sessions."""
+    # Create
+    resp = client.post("/sessions", json={"title": "Test API Chat"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "id" in data
+    assert data["title"] == "Test API Chat"
+    session_id = data["id"]
+
+    # List
+    list_resp = client.get("/sessions")
+    assert list_resp.status_code == 200
+    list_data = list_resp.json()
+    assert list_data["total_sessions"] >= 1
+    assert any(s["id"] == session_id for s in list_data["sessions"])
+
+    # Get details
+    get_resp = client.get(f"/sessions/{session_id}")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["id"] == session_id
+    assert get_resp.json()["messages"] == []
+
+    # Delete
+    del_resp = client.delete(f"/sessions/{session_id}")
+    assert del_resp.status_code == 200
+    assert del_resp.json()["session_id"] == session_id
+
+    # Verify 404 after deletion
+    assert client.get(f"/sessions/{session_id}").status_code == 404
+
+
+def test_get_nonexistent_session_returns_404(client):
+    """GET /sessions/{id} for nonexistent session should return 404."""
+    resp = client.get("/sessions/nonexistent-session-id")
+    assert resp.status_code == 404
+
+
+def test_delete_nonexistent_session_returns_404(client):
+    """DELETE /sessions/{id} for nonexistent session should return 404."""
+    resp = client.delete("/sessions/nonexistent-session-id")
+    assert resp.status_code == 404
+
+
+def test_session_chat_endpoint(client, monkeypatch):
+    """POST /sessions/{id}/chat should execute chat turn and return ChatResponseModel."""
+    from unittest.mock import MagicMock
+    import exocortex.api as api_mod
+    from exocortex.retrieval import ChatResponse
+
+    mock_engine = MagicMock()
+    mock_engine.chat.return_value = ChatResponse(
+        answer="Multi-turn answer from mock",
+        sources=[{"filename": "test.pdf", "page_numbers": "1", "text_preview": "..."}],
+        query="What is Chapter 1 about?",
+        standalone_query="What is Chapter 1 about?",
+        needs_retrieval=True,
+        session_id="mock-session-123",
+        num_chunks_retrieved=1,
+        model="deepseek-v4-flash",
+        usage={"total_tokens": 80},
+    )
+    monkeypatch.setattr(api_mod, "_engine", mock_engine)
+
+    resp = client.post(
+        "/sessions/mock-session-123/chat",
+        json={"question": "What is Chapter 1 about?"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["answer"] == "Multi-turn answer from mock"
+    assert data["standalone_query"] == "What is Chapter 1 about?"
+    assert data["session_id"] == "mock-session-123"
+    assert data["needs_retrieval"] is True
+    assert mock_engine.chat.called
+
+
+def test_session_chat_error_handling(client, monkeypatch):
+    """POST /sessions/{id}/chat handles ConnectionError, RuntimeError, Exception."""
+    from unittest.mock import MagicMock
+    import exocortex.api as api_mod
+
+    # ConnectionError -> 503
+    mock_engine = MagicMock()
+    mock_engine.chat.side_effect = ConnectionError("Service unreachable")
+    monkeypatch.setattr(api_mod, "_engine", mock_engine)
+    resp = client.post("/sessions/s1/chat", json={"question": "hello"})
+    assert resp.status_code == 503
+
+    # RuntimeError -> 502
+    mock_engine.chat.side_effect = RuntimeError("Bad gateway / inference failed")
+    resp = client.post("/sessions/s1/chat", json={"question": "hello"})
+    assert resp.status_code == 502
+
+    # Generic Exception -> 500
+    mock_engine.chat.side_effect = ValueError("Unexpected internal state")
+    resp = client.post("/sessions/s1/chat", json={"question": "hello"})
+    assert resp.status_code == 500
+
+
 # --- Integration tests ---
 
 
@@ -215,3 +318,4 @@ def test_ingest_and_query_integration(client, sample_pdf_bytes):
     data = response.json()
     assert data["total_documents"] > 0
     logger.info(f"Total documents: {data['total_documents']}")
+
