@@ -19,7 +19,7 @@ from exocortex.vectorstore import SearchResult
 
 logger = logging.getLogger(__name__)
 
-# System prompt that instructs the LLM to stay grounded in context
+# System prompt used when retrieval produces context chunks
 SYSTEM_PROMPT = """You are a helpful assistant that answers questions based ONLY on the provided context from ebooks.
 
 Rules:
@@ -33,17 +33,32 @@ Context from documents:
 {context}
 """
 
-REWRITE_ROUTER_PROMPT = """You are an AI assistant analyzing a conversation for a RAG retrieval system.
-Given the chat history and a follow-up question from the user:
-1. Determine if the question needs document retrieval from the ebook vector database (needs_retrieval = true/false).
-   - Set needs_retrieval to false for greetings, conversational chit-chat, requests to clarify/summarize what was ALREADY said in the chat history.
-   - Set needs_retrieval to true if the question asks for factual information, book content, definitions, or new topics.
-2. Rewrite the user's follow-up question into a complete, standalone question in English that incorporates any missing context or references (pronouns like 'it', 'they', 'that method', 'the previous chapter', etc.) from the conversation history. If the question is already standalone, return it unchanged.
+# Conversational system prompt used when retrieval is bypassed or search results are empty
+CONVERSATIONAL_SYSTEM_PROMPT = """You are a helpful assistant engaging in a conversation with the user.
+Answer the user's question, request, or follow-up politely and accurately based on the ongoing conversation history.
+If the user asks for new factual information or specific document excerpts that were not retrieved, politely state that no matching document sections were found."""
 
-Respond ONLY with valid JSON in this exact structure:
+REWRITE_ROUTER_PROMPT = """You are an expert query analyzer and router for a conversational Retrieval-Augmented Generation (RAG) system answering questions from ebooks.
+
+Given the Chat History and a new Follow-up Question from the user:
+
+1. **Routing Decision (`needs_retrieval` - boolean)**:
+   - Set `needs_retrieval: true` if the question requires looking up facts, definitions, book content, explanations, or deeper details from the ebook collection. This includes follow-up questions that ask for more details or elaboration on topics mentioned earlier (e.g., 'How is it different?', 'Tell me more about X', 'Why is that so?', 'Give examples', 'What is static data?').
+   - Set `needs_retrieval: false` ONLY if the user question can be fully and accurately answered using the existing chat history alone, without searching the book. This includes:
+     * Greetings / social pleasantries ('Hello', 'Thanks for the explanation', 'Good morning').
+     * Requests to format, translate, simplify, or summarize what the assistant ALREADY stated in the conversation history ('Summarize your previous response into 2 bullet points', 'Translate what you just said to Vietnamese', 'Explain your last point in simpler terms').
+     * Clarifications about the assistant's wording or meta-conversation ('Why did you say that?', 'Which of the points you mentioned was the first one?').
+
+2. **Query Reformulation (`standalone_query` - string)**:
+   - Rewrite the user's follow-up question into an explicit, search-optimized standalone question in English.
+   - De-reference all pronouns ('it', 'they', 'this', 'that', 'its', 'the second one', 'these methods') and implicit topics by replacing them with the exact nouns, entities, and subjects from the chat history.
+   - Example: If the chat discussed data in ML research vs production and the user asks 'How is it different?', rewrite to 'How does data differ between machine learning in research and production roles?'
+   - If `needs_retrieval` is false, provide a clean standalone phrasing of the user's request.
+
+Respond ONLY with a JSON object in this exact schema:
 {
   "needs_retrieval": true,
-  "standalone_query": "Standalone reformulated question here"
+  "standalone_query": "Explicit search query with all pronouns resolved"
 }
 """
 
@@ -203,8 +218,9 @@ class LLMClient:
                     {"role": "system", "content": REWRITE_ROUTER_PROMPT},
                     {"role": "user", "content": user_content},
                 ],
+                response_format={"type": "json_object"},
                 temperature=0.0,
-                max_tokens=256,
+                max_tokens=512,
             )
             raw_content = response.choices[0].message.content or "{}"
             # Clean markdown code block wraps if present
@@ -235,8 +251,11 @@ class LLMClient:
         Returns:
             LLMResponse with answer, source info, and token usage.
         """
-        context = _format_context(search_results)
-        system_message = SYSTEM_PROMPT.format(context=context)
+        if search_results:
+            context = _format_context(search_results)
+            system_message = SYSTEM_PROMPT.format(context=context)
+        else:
+            system_message = CONVERSATIONAL_SYSTEM_PROMPT
 
         messages_payload: list[dict[str, str]] = [
             {"role": "system", "content": system_message}

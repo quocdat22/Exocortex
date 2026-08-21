@@ -183,6 +183,34 @@ def test_generate_with_history_builds_messages(settings, sample_results):
     assert messages[3]["content"] == "Tell me about ML."
 
 
+def test_generate_with_history_conversational_empty_results(settings):
+    """When search_results is empty, generate_with_history should use CONVERSATIONAL_SYSTEM_PROMPT."""
+    from exocortex.llm import CONVERSATIONAL_SYSTEM_PROMPT
+
+    client = LLMClient(settings)
+    mock_response = MagicMock()
+    mock_response.choices = [
+        MagicMock(message=MagicMock(content="Here is the summary of what we discussed."))
+    ]
+    client.client.chat.completions.create = MagicMock(return_value=mock_response)
+
+    history = [
+        Message(id="1", session_id="s1", role="user", content="Hi"),
+        Message(id="2", session_id="s1", role="assistant", content="Hello! How can I help?"),
+    ]
+    response = client.generate_with_history(
+        messages_history=history,
+        query="Summarize our talk",
+        search_results=[],
+    )
+
+    assert response.answer == "Here is the summary of what we discussed."
+    assert response.sources == []
+    call_args = client.client.chat.completions.create.call_args.kwargs
+    messages = call_args["messages"]
+    assert messages[0]["content"] == CONVERSATIONAL_SYSTEM_PROMPT
+
+
 def test_generate_with_history_error(settings, sample_results):
     """generate_with_history should raise RuntimeError on API failure."""
     client = LLMClient(settings)
