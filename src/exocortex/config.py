@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     # --- Paths ---
     ebooks_dir: str = "./data/ebooks"
 
+    # --- Session & History ---
+    sessions_db_path: str = "./data/sessions.db"
+    chat_history_window: int = 3  # number of recent Q&A turns (pairs) to provide
+
     # --- API ---
     api_host: str = "0.0.0.0"
     api_port: int = 8000
@@ -55,6 +59,11 @@ class Settings(BaseSettings):
     def ebooks_path(self) -> Path:
         """Return ebooks directory as a Path object."""
         return Path(self.ebooks_dir)
+
+    @property
+    def sessions_path(self) -> Path:
+        """Return sessions SQLite database path as a Path object."""
+        return Path(self.sessions_db_path)
 
     @property
     def chroma_path(self) -> Path:

@@ -47,3 +47,22 @@ def test_get_settings_returns_settings():
     """get_settings() should return a Settings instance."""
     settings = get_settings()
     assert isinstance(settings, Settings)
+
+
+def test_settings_session_defaults():
+    """Settings should include default session database path and history window."""
+    settings = Settings(deepseek_api_key="test-key")
+    assert settings.sessions_db_path == "./data/sessions.db"
+    assert settings.chat_history_window == 3
+    assert settings.sessions_path.name == "sessions.db"
+
+
+def test_settings_session_env_override(monkeypatch):
+    """Settings should allow overriding session settings via environment variables."""
+    monkeypatch.setenv("SESSIONS_DB_PATH", "./custom/sessions.db")
+    monkeypatch.setenv("CHAT_HISTORY_WINDOW", "5")
+
+    settings = Settings(deepseek_api_key="test-key")
+    assert settings.sessions_db_path == "./custom/sessions.db"
+    assert settings.chat_history_window == 5
+
