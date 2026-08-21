@@ -6,12 +6,15 @@ to DeepSeek-v4-flash and generate grounded answers.
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from dataclasses import dataclass
 
 from openai import OpenAI
 
 from exocortex.config import Settings
+from exocortex.session import Message
 from exocortex.vectorstore import SearchResult
 
 logger = logging.getLogger(__name__)
@@ -28,6 +31,20 @@ Rules:
 
 Context from documents:
 {context}
+"""
+
+REWRITE_ROUTER_PROMPT = """You are an AI assistant analyzing a conversation for a RAG retrieval system.
+Given the chat history and a follow-up question from the user:
+1. Determine if the question needs document retrieval from the ebook vector database (needs_retrieval = true/false).
+   - Set needs_retrieval to false for greetings, conversational chit-chat, requests to clarify/summarize what was ALREADY said in the chat history.
+   - Set needs_retrieval to true if the question asks for factual information, book content, definitions, or new topics.
+2. Rewrite the user's follow-up question into a complete, standalone question in English that incorporates any missing context or references (pronouns like 'it', 'they', 'that method', 'the previous chapter', etc.) from the conversation history. If the question is already standalone, return it unchanged.
+
+Respond ONLY with valid JSON in this exact structure:
+{
+  "needs_retrieval": true,
+  "standalone_query": "Standalone reformulated question here"
+}
 """
 
 
@@ -147,6 +164,122 @@ class LLMClient:
             f"LLM generated answer: {len(answer)} chars, "
             f"sources: {len(sources)}, usage: {usage}"
         )
+
+        return LLMResponse(
+            answer=answer,
+            sources=sources,
+            model=self.model,
+            usage=usage,
+        )
+
+    def rewrite_and_route(
+        self,
+        history: list[Message],
+        question: str,
+    ) -> tuple[str, bool]:
+        """Analyze history and rewrite follow-up question into a standalone query.
+
+        Args:
+            history: List of recent Message objects (chronological order).
+            question: The user's newest follow-up question.
+
+        Returns:
+            Tuple of (standalone_query, needs_retrieval).
+        """
+        if not history:
+            return question, True
+
+        history_lines: list[str] = []
+        for msg in history:
+            history_lines.append(f"{msg.role.upper()}: {msg.content}")
+        history_text = "\n".join(history_lines)
+
+        user_content = f"Chat History:\n{history_text}\n\nNew Follow-up Question:\n{question}"
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": REWRITE_ROUTER_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+                temperature=0.0,
+                max_tokens=256,
+            )
+            raw_content = response.choices[0].message.content or "{}"
+            # Clean markdown code block wraps if present
+            cleaned = re.sub(r"^```json\s*", "", raw_content.strip(), flags=re.IGNORECASE)
+            cleaned = re.sub(r"\s*```$", "", cleaned)
+            data = json.loads(cleaned)
+
+            standalone = data.get("standalone_query", question).strip() or question
+            needs_retrieval = bool(data.get("needs_retrieval", True))
+            return standalone, needs_retrieval
+        except Exception as e:
+            logger.warning(f"Query rewrite and router failed ({e}), falling back to raw question: {question}")
+            return question, True
+
+    def generate_with_history(
+        self,
+        messages_history: list[Message],
+        query: str,
+        search_results: list[SearchResult],
+    ) -> LLMResponse:
+        """Generate an answer given conversation history and retrieved context chunks.
+
+        Args:
+            messages_history: Recent conversation Message items.
+            query: The user's query.
+            search_results: Retrieved chunks from the vector store.
+
+        Returns:
+            LLMResponse with answer, source info, and token usage.
+        """
+        context = _format_context(search_results)
+        system_message = SYSTEM_PROMPT.format(context=context)
+
+        messages_payload: list[dict[str, str]] = [
+            {"role": "system", "content": system_message}
+        ]
+
+        for msg in messages_history:
+            if msg.role in ("user", "assistant"):
+                messages_payload.append({"role": msg.role, "content": msg.content})
+
+        messages_payload.append({"role": "user", "content": query})
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages_payload,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+            )
+        except Exception as e:
+            raise RuntimeError(f"LLM API call failed: {e}") from e
+
+        answer = response.choices[0].message.content or ""
+
+        sources = []
+        for result in search_results:
+            meta = result.metadata or {}
+            text = result.text or ""
+            sources.append(
+                {
+                    "filename": meta.get("filename", "unknown"),
+                    "page_numbers": meta.get("page_numbers", "?"),
+                    "text": text,
+                    "text_preview": text[:200] + "..." if len(text) > 200 else text,
+                }
+            )
+
+        usage = None
+        if response.usage:
+            usage = {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": response.usage.total_tokens,
+            }
 
         return LLMResponse(
             answer=answer,
