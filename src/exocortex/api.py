@@ -394,10 +394,11 @@ async def delete_document(document_id: str):
 
 
 @app.post("/sessions", response_model=SessionDetailResponse)
-async def create_session(request: CreateSessionRequest = CreateSessionRequest()):
+async def create_session(request: CreateSessionRequest | None = None):
     """Create a new chat session."""
+    req = request or CreateSessionRequest()
     engine = get_engine()
-    session = engine.session_store.create_session(title=request.title)
+    session = engine.session_store.create_session(title=req.title)
     return SessionDetailResponse(
         id=session.id,
         title=session.title,

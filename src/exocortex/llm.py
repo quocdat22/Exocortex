@@ -208,7 +208,7 @@ class LLMClient:
             )
             raw_content = response.choices[0].message.content or "{}"
             # Clean markdown code block wraps if present
-            cleaned = re.sub(r"^```json\s*", "", raw_content.strip(), flags=re.IGNORECASE)
+            cleaned = re.sub(r"^```(?:json)?\s*", "", raw_content.strip(), flags=re.IGNORECASE)
             cleaned = re.sub(r"\s*```$", "", cleaned)
             data = json.loads(cleaned)
 
@@ -280,6 +280,10 @@ class LLMClient:
                 "completion_tokens": response.usage.completion_tokens,
                 "total_tokens": response.usage.total_tokens,
             }
+
+        logger.info(
+            f"LLM generated chat answer: {len(answer)} chars, sources: {len(sources)}, usage: {usage}"
+        )
 
         return LLMResponse(
             answer=answer,

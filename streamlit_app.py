@@ -36,9 +36,19 @@ def api_request(method: str, endpoint: str, **kwargs) -> dict | None:
         return None
 
 
-# Initialize session state for active chat session
-if "current_session_id" not in st.session_state:
-    st.session_state["current_session_id"] = None
+# Query existing sessions and initialize active session state before sidebar
+sessions_resp = api_request("get", "/sessions")
+sessions = sessions_resp.get("sessions", []) if sessions_resp else []
+
+if not st.session_state.get("current_session_id"):
+    if sessions:
+        st.session_state["current_session_id"] = sessions[0]["id"]
+    else:
+        new_sess = api_request("post", "/sessions", json={})
+        if new_sess:
+            st.session_state["current_session_id"] = new_sess["id"]
+            sessions_resp = api_request("get", "/sessions")
+            sessions = sessions_resp.get("sessions", []) if sessions_resp else []
 
 # --- Sidebar: Sessions & System Management ---
 with st.sidebar:
@@ -52,11 +62,10 @@ with st.sidebar:
             st.rerun()
 
     st.subheader("💬 Conversations")
-    sessions_resp = api_request("get", "/sessions")
-    if sessions_resp and sessions_resp.get("sessions"):
-        for s in sessions_resp["sessions"]:
+    if sessions:
+        for s in sessions:
             col_title, col_del = st.columns([4, 1])
-            is_active = s["id"] == st.session_state["current_session_id"]
+            is_active = s["id"] == st.session_state.get("current_session_id")
             prefix = "👉 " if is_active else ""
             with col_title:
                 if st.button(f"{prefix}{s['title'][:25]}", key=f"sess_{s['id']}", use_container_width=True):
@@ -65,7 +74,7 @@ with st.sidebar:
             with col_del:
                 if st.button("🗑️", key=f"del_sess_{s['id']}"):
                     api_request("delete", f"/sessions/{s['id']}")
-                    if st.session_state["current_session_id"] == s["id"]:
+                    if st.session_state.get("current_session_id") == s["id"]:
                         st.session_state["current_session_id"] = None
                     st.rerun()
     else:
@@ -105,15 +114,6 @@ with st.sidebar:
 tab_chat, tab_upload = st.tabs(["💬 Chat", "📤 Upload Ebook"])
 
 with tab_chat:
-    # Ensure there is a valid active session
-    if not st.session_state["current_session_id"]:
-        if sessions_resp and sessions_resp.get("sessions"):
-            st.session_state["current_session_id"] = sessions_resp["sessions"][0]["id"]
-        else:
-            new_sess = api_request("post", "/sessions", json={})
-            if new_sess:
-                st.session_state["current_session_id"] = new_sess["id"]
-
     current_session = None
     if st.session_state["current_session_id"]:
         current_session = api_request("get", f"/sessions/{st.session_state['current_session_id']}")

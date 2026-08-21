@@ -154,7 +154,7 @@ class RAGEngine:
 
         # Auto-update session title if it was default or initial placeholder
         if not is_new_session and (session.title in ("New Conversation", "Initial") or not session.title):
-            clean_title = question.split("\n")[0][:40].strip()
+            clean_title = question.strip().split("\n")[0][:40].strip()
             if clean_title:
                 self.session_store.update_session_title(session_id, clean_title)
 
