@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import fitz  # PyMuPDF
 
@@ -217,18 +218,22 @@ def ingest_pdf(
     pdf_path: Path,
     chunk_size: int = 512,
     chunk_overlap: int = 50,
+    strategy: str = "fixed",
+    **kwargs: Any,
 ) -> list[Chunk]:
     """Full ingestion pipeline: PDF → pages → chunks.
 
     This is the main entry point for PDF ingestion. It:
     1. Extracts text from the PDF
     2. Generates a document ID
-    3. Chunks the text with overlap
+    3. Chunks the text using the specified chunking strategy (default: fixed)
 
     Args:
         pdf_path: Path to the PDF file.
         chunk_size: Maximum characters per chunk.
         chunk_overlap: Overlap characters between chunks.
+        strategy: Chunking strategy name (default: "fixed").
+        **kwargs: Additional strategy-specific arguments passed to get_chunker.
 
     Returns:
         List of Chunk objects ready for embedding.
@@ -237,16 +242,16 @@ def ingest_pdf(
         >>> chunks = ingest_pdf(Path("data/ebooks/my_book.pdf"))
         >>> print(f"Created {len(chunks)} chunks from {chunks[0].filename}")
     """
+    from exocortex.chunking.factory import get_chunker
+
     filename = pdf_path.name
     document_id = generate_document_id(filename)
 
     pages = extract_text_from_pdf(pdf_path)
-    chunks = chunk_text(
-        pages=pages,
+    chunker = get_chunker(
+        strategy=strategy,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
-        document_id=document_id,
-        filename=filename,
+        **kwargs,
     )
-
-    return chunks
+    return chunker.chunk(pages=pages, document_id=document_id, filename=filename)

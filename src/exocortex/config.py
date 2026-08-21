@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     embedding_num_ctx: int = 32768  # qwen3-embedding:0.6b supports 32k context
 
     # --- Chunking ---
+    chunking_strategy: str = "fixed"  # "fixed", "recursive", "sentence_paragraph", "semantic"
     chunk_size: int = 512  # tokens per chunk
     chunk_overlap: int = 50  # overlap tokens between chunks
 
