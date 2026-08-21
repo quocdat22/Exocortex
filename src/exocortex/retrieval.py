@@ -13,9 +13,25 @@ from pathlib import Path
 from exocortex.config import Settings
 from exocortex.embedding import EmbeddingClient
 from exocortex.llm import LLMClient
+from exocortex.session import SessionStore
 from exocortex.vectorstore import VectorStore
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ChatResponse:
+    """Response to a conversational multi-turn query within a session."""
+
+    answer: str
+    sources: list[dict]
+    query: str
+    standalone_query: str
+    needs_retrieval: bool
+    session_id: str
+    num_chunks_retrieved: int
+    model: str
+    usage: dict | None = None
 
 
 @dataclass
@@ -61,11 +77,98 @@ class RAGEngine:
         embedding_client: EmbeddingClient | None = None,
         vector_store: VectorStore | None = None,
         llm_client: LLMClient | None = None,
+        session_store: SessionStore | None = None,
     ) -> None:
         self.settings = settings
         self.embedding_client = embedding_client or EmbeddingClient(settings)
         self.vector_store = vector_store or VectorStore(settings)
         self.llm_client = llm_client or LLMClient(settings)
+        self.session_store = session_store or SessionStore(settings.sessions_db_path)
+
+    def chat(self, session_id: str, question: str) -> ChatResponse:
+        """Process a conversational question with history, rewrite, and retrieval routing.
+
+        Args:
+            session_id: The UUID of the conversation session.
+            question: The user's latest follow-up question.
+
+        Returns:
+            ChatResponse with the answer, citations, standalone query, and session info.
+        """
+        logger.info(f"Processing chat turn for session {session_id}: {question[:100]}...")
+
+        # 1. Ensure session exists
+        session = self.session_store.get_session(session_id, include_messages=False)
+        is_new_session = False
+        if session is None:
+            session = self.session_store.create_session(title=question[:40].strip() or "New Conversation")
+            session_id = session.id
+            is_new_session = True
+
+        # 2. Fetch recent conversation history (sliding window: 2 * window_size)
+        history_limit = max(1, self.settings.chat_history_window * 2)
+        recent_history = self.session_store.get_recent_messages(session_id, limit=history_limit)
+
+        # 3. Rewrite query and determine routing
+        standalone_query, needs_retrieval = self.llm_client.rewrite_and_route(
+            history=recent_history,
+            question=question,
+        )
+        logger.info(
+            f"Query routed: needs_retrieval={needs_retrieval}, standalone_query='{standalone_query[:100]}'"
+        )
+
+        # 4. Perform vector retrieval if needed
+        search_results = []
+        if needs_retrieval and self.vector_store.count() > 0:
+            query_embedding = self.embedding_client.embed_query(standalone_query)
+            search_results = self.vector_store.query(
+                query_embedding=query_embedding,
+                top_k=self.settings.top_k,
+            )
+            logger.info(f"Retrieved {len(search_results)} chunks for standalone query")
+
+        # 5. Generate answer using LLM with context + history
+        llm_response = self.llm_client.generate_with_history(
+            messages_history=recent_history,
+            query=question,
+            search_results=search_results,
+        )
+
+        # 6. Persist user and assistant turns to database
+        self.session_store.add_message(
+            session_id=session_id,
+            role="user",
+            content=question,
+        )
+        self.session_store.add_message(
+            session_id=session_id,
+            role="assistant",
+            content=llm_response.answer,
+            standalone_query=standalone_query,
+            needs_retrieval=needs_retrieval,
+            sources=llm_response.sources,
+            model=llm_response.model,
+            usage=llm_response.usage,
+        )
+
+        # Auto-update session title if it was default or initial placeholder
+        if not is_new_session and (session.title in ("New Conversation", "Initial") or not session.title):
+            clean_title = question.split("\n")[0][:40].strip()
+            if clean_title:
+                self.session_store.update_session_title(session_id, clean_title)
+
+        return ChatResponse(
+            answer=llm_response.answer,
+            sources=llm_response.sources,
+            query=question,
+            standalone_query=standalone_query,
+            needs_retrieval=needs_retrieval,
+            session_id=session_id,
+            num_chunks_retrieved=len(search_results),
+            model=llm_response.model,
+            usage=llm_response.usage,
+        )
 
     def query(self, question: str) -> QueryResponse:
         """Process a user question through the full RAG pipeline.

@@ -4,8 +4,12 @@ import logging
 
 import pytest
 
+from unittest.mock import MagicMock
+
 from exocortex.config import Settings
-from exocortex.retrieval import QueryResponse, RAGEngine
+from exocortex.llm import LLMResponse
+from exocortex.retrieval import ChatResponse, QueryResponse, RAGEngine
+from exocortex.session import SessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +33,12 @@ def test_query_response_dataclass():
     assert response.query == "test question"
 
 
-def test_rag_engine_initialization(settings):
+def test_rag_engine_initialization(tmp_path):
     """RAGEngine should initialize without errors."""
-    # Note: this will try to init ChromaDB and other clients
-    # but won't make API calls
+    settings = Settings(deepseek_api_key="test-key", sessions_db_path=str(tmp_path / "sessions.db"))
     engine = RAGEngine(settings)
     assert engine.settings == settings
+    assert engine.session_store is not None
 
 
 def test_rag_engine_ingest_and_index_strategy_propagation(monkeypatch, tmp_path):
@@ -125,6 +129,145 @@ def test_rag_engine_ingest_duplicate_detection(tmp_path):
         res = engine.ingest_and_index(pdf_file, force=True)
         assert res["document_id"] == "doc123"
         assert res["chunk_count"] == 1
+
+
+def test_chat_response_dataclass():
+    """ChatResponse should hold all multi-turn metadata fields."""
+    response = ChatResponse(
+        answer="Answer text",
+        sources=[],
+        query="Follow up?",
+        standalone_query="What about X?",
+        needs_retrieval=True,
+        session_id="s1",
+        num_chunks_retrieved=3,
+        model="deepseek-v4-flash",
+    )
+    assert response.session_id == "s1"
+    assert response.standalone_query == "What about X?"
+    assert response.needs_retrieval is True
+    assert response.usage is None
+
+
+def test_rag_engine_chat_pipeline(tmp_path):
+    """RAGEngine.chat should orchestrate rewrite -> retrieval -> generation -> persist."""
+    settings = Settings(deepseek_api_key="test-key", sessions_db_path=str(tmp_path / "sessions.db"))
+    session_store = SessionStore(settings.sessions_db_path)
+    session = session_store.create_session("Initial")
+
+    engine = RAGEngine(settings=settings, session_store=session_store)
+    engine.embedding_client = MagicMock()
+    engine.embedding_client.embed_query.return_value = [0.1] * 1024
+    engine.vector_store = MagicMock()
+    engine.vector_store.count.return_value = 5
+    engine.vector_store.query.return_value = []
+
+    engine.llm_client = MagicMock()
+    engine.llm_client.rewrite_and_route.return_value = ("Standalone Question", True)
+    engine.llm_client.generate_with_history.return_value = LLMResponse(
+        answer="Grounded chat answer",
+        sources=[],
+        model="deepseek-v4-flash",
+        usage={"total_tokens": 50},
+    )
+
+    response = engine.chat(session_id=session.id, question="My Question")
+
+    assert isinstance(response, ChatResponse)
+    assert response.answer == "Grounded chat answer"
+    assert response.standalone_query == "Standalone Question"
+    assert response.session_id == session.id
+
+    # Check persistence in SessionStore
+    updated_session = session_store.get_session(session.id, include_messages=True)
+    assert updated_session is not None
+    assert len(updated_session.messages) == 2
+    assert updated_session.messages[0].role == "user"
+    assert updated_session.messages[0].content == "My Question"
+    assert updated_session.messages[1].role == "assistant"
+    assert updated_session.messages[1].content == "Grounded chat answer"
+    # Auto-update title on first question
+    assert updated_session.title == "My Question"
+
+
+def test_rag_engine_chat_no_retrieval(tmp_path):
+    """When router decides needs_retrieval=False, vector store query is bypassed."""
+    settings = Settings(deepseek_api_key="test-key", sessions_db_path=str(tmp_path / "sessions.db"))
+    session_store = SessionStore(settings.sessions_db_path)
+    session = session_store.create_session("Chat")
+
+    engine = RAGEngine(settings=settings, session_store=session_store)
+    engine.embedding_client = MagicMock()
+    engine.vector_store = MagicMock()
+    engine.vector_store.count.return_value = 5
+
+    engine.llm_client = MagicMock()
+    engine.llm_client.rewrite_and_route.return_value = ("Thank you!", False)
+    engine.llm_client.generate_with_history.return_value = LLMResponse(
+        answer="You are welcome!",
+        sources=[],
+        model="deepseek-v4-flash",
+    )
+
+    response = engine.chat(session_id=session.id, question="Thank you!")
+
+    assert response.needs_retrieval is False
+    assert response.num_chunks_retrieved == 0
+    assert not engine.embedding_client.embed_query.called
+    assert not engine.vector_store.query.called
+
+
+def test_rag_engine_chat_auto_creates_session_if_missing(tmp_path):
+    """If session_id does not exist, chat should create a new session."""
+    settings = Settings(deepseek_api_key="test-key", sessions_db_path=str(tmp_path / "sessions.db"))
+    session_store = SessionStore(settings.sessions_db_path)
+
+    engine = RAGEngine(settings=settings, session_store=session_store)
+    engine.embedding_client = MagicMock()
+    engine.embedding_client.embed_query.return_value = [0.1] * 1024
+    engine.vector_store = MagicMock()
+    engine.vector_store.count.return_value = 5
+    engine.vector_store.query.return_value = []
+
+    engine.llm_client = MagicMock()
+    engine.llm_client.rewrite_and_route.return_value = ("Hello world", False)
+    engine.llm_client.generate_with_history.return_value = LLMResponse(
+        answer="Hi!",
+        sources=[],
+        model="deepseek-v4-flash",
+    )
+
+    response = engine.chat(session_id="nonexistent-id", question="Hello world")
+    assert response.session_id != "nonexistent-id"
+    created = session_store.get_session(response.session_id, include_messages=True)
+    assert created is not None
+    assert created.title == "Hello world"
+    assert len(created.messages) == 2
+
+
+def test_rag_engine_chat_empty_vectorstore(tmp_path):
+    """When vector store is empty (count == 0), retrieval query is skipped."""
+    settings = Settings(deepseek_api_key="test-key", sessions_db_path=str(tmp_path / "sessions.db"))
+    session_store = SessionStore(settings.sessions_db_path)
+    session = session_store.create_session()
+
+    engine = RAGEngine(settings=settings, session_store=session_store)
+    engine.embedding_client = MagicMock()
+    engine.vector_store = MagicMock()
+    engine.vector_store.count.return_value = 0
+
+    engine.llm_client = MagicMock()
+    engine.llm_client.rewrite_and_route.return_value = ("Some Question", True)
+    engine.llm_client.generate_with_history.return_value = LLMResponse(
+        answer="I don't have enough information.",
+        sources=[],
+        model="deepseek-v4-flash",
+    )
+
+    response = engine.chat(session_id=session.id, question="Some Question")
+    assert response.num_chunks_retrieved == 0
+    assert not engine.embedding_client.embed_query.called
+    assert not engine.vector_store.query.called
 
 
 # --- Full Integration Test ---
