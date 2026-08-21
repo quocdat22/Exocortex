@@ -15,10 +15,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from exocortex.config import get_settings
-from exocortex.retrieval import RAGEngine
+from exocortex.retrieval import DuplicateDocumentError, RAGEngine
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,16 @@ class DocumentInfo(BaseModel):
     document_id: str
     filename: str
     chunk_count: int
+    file_hash: str = ""
+
+
+class DuplicateResponse(BaseModel):
+    """Response body when a duplicate document is detected."""
+
+    detail: str
+    duplicate: bool
+    file_hash: str
+    existing_documents: list[DocumentInfo]
 
 
 class DocumentListResponse(BaseModel):
@@ -151,12 +162,25 @@ async def health_check():
     )
 
 
-@app.post("/ingest", response_model=IngestResponse)
+@app.post(
+    "/ingest",
+    response_model=IngestResponse,
+    responses={
+        409: {
+            "model": DuplicateResponse,
+            "description": "Duplicate document detected",
+        }
+    },
+)
 async def ingest_pdf(
     file: UploadFile = File(...),
     strategy: str | None = Query(
         None,
         description="Chunking strategy override (fixed, recursive, sentence_paragraph, semantic)",
+    ),
+    force: bool = Query(
+        False,
+        description="Force ingestion and indexing even if content is duplicate",
     ),
 ):
     """Upload and index a PDF ebook.
@@ -181,14 +205,14 @@ async def ingest_pdf(
             tmp.write(content)
             tmp_path = Path(tmp.name)
 
-        # Also save to ebooks directory for reference
+        # Ingest and index (raises DuplicateDocumentError if duplicate and force=False)
+        result = engine.ingest_and_index(tmp_path, strategy=strategy, force=force)
+
+        # Save to ebooks directory for reference
         ebooks_dir = engine.settings.ebooks_path
         ebooks_dir.mkdir(parents=True, exist_ok=True)
         permanent_path = ebooks_dir / file.filename
         permanent_path.write_bytes(content)
-
-        # Ingest and index
-        result = engine.ingest_and_index(tmp_path, strategy=strategy)
 
         return IngestResponse(
             filename=file.filename,
@@ -197,6 +221,16 @@ async def ingest_pdf(
             message=f"Successfully ingested '{file.filename}' into {result['chunk_count']} chunks",
         )
 
+    except DuplicateDocumentError as e:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": str(e),
+                "duplicate": True,
+                "file_hash": e.file_hash,
+                "existing_documents": e.existing_documents,
+            },
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except ConnectionError as e:

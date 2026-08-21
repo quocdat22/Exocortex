@@ -48,6 +48,7 @@ def test_rag_engine_ingest_and_index_strategy_propagation(monkeypatch, tmp_path)
     engine.embedding_client = MagicMock()
     engine.embedding_client.embed_documents.return_value = [[0.1] * 1024]
     engine.vector_store = MagicMock()
+    engine.vector_store.find_by_file_hash.return_value = []
 
     sample_chunk = Chunk(
         text="Sample chunk content",
@@ -82,6 +83,48 @@ def test_rag_engine_ingest_and_index_strategy_propagation(monkeypatch, tmp_path)
             chunk_overlap=50,
             strategy="sentence_paragraph",
         )
+
+
+def test_rag_engine_ingest_duplicate_detection(tmp_path):
+    """RAGEngine.ingest_and_index should raise DuplicateDocumentError if duplicate exists and force=False."""
+    from unittest.mock import MagicMock, patch
+
+    from exocortex.ingestion import Chunk
+    from exocortex.retrieval import DuplicateDocumentError
+
+    settings = Settings(deepseek_api_key="test-key")
+    engine = RAGEngine(settings)
+    engine.embedding_client = MagicMock()
+    engine.vector_store = MagicMock()
+
+    pdf_file = tmp_path / "duplicate.pdf"
+    pdf_file.write_bytes(b"%PDF-1.4 duplicate content")
+
+    # Mock vector_store.find_by_file_hash to return existing doc
+    engine.vector_store.find_by_file_hash.return_value = [
+        {"document_id": "existing_doc_id", "filename": "original.pdf", "chunk_count": 5}
+    ]
+
+    with pytest.raises(DuplicateDocumentError) as exc_info:
+        engine.ingest_and_index(pdf_file, force=False)
+
+    assert "Duplicate document detected" in str(exc_info.value)
+    assert exc_info.value.existing_documents[0]["filename"] == "original.pdf"
+    assert exc_info.value.file_hash != ""
+
+    # When force=True, it should proceed
+    sample_chunk = Chunk(
+        text="Sample chunk",
+        document_id="doc123",
+        filename="duplicate.pdf",
+        page_numbers=[1],
+        chunk_index=0,
+    )
+    with patch("exocortex.ingestion.ingest_pdf", return_value=[sample_chunk]):
+        engine.embedding_client.embed_documents.return_value = [[0.1] * 1024]
+        res = engine.ingest_and_index(pdf_file, force=True)
+        assert res["document_id"] == "doc123"
+        assert res["chunk_count"] == 1
 
 
 # --- Full Integration Test ---

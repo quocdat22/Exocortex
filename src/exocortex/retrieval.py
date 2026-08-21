@@ -30,6 +30,15 @@ class QueryResponse:
     usage: dict | None = None  # Token usage stats
 
 
+class DuplicateDocumentError(Exception):
+    """Raised when an uploaded document has identical content to an existing document."""
+
+    def __init__(self, message: str, file_hash: str, existing_documents: list[dict]) -> None:
+        super().__init__(message)
+        self.file_hash = file_hash
+        self.existing_documents = existing_documents
+
+
 class RAGEngine:
     """Retrieval-Augmented Generation engine.
 
@@ -104,6 +113,7 @@ class RAGEngine:
         self,
         pdf_path: str | Path,
         strategy: str | None = None,
+        force: bool = False,
     ) -> dict:
         """Full ingestion and indexing pipeline for a PDF.
 
@@ -112,13 +122,29 @@ class RAGEngine:
         Args:
             pdf_path: Path to the PDF file.
             strategy: Optional chunking strategy name. If None, uses self.settings.chunking_strategy.
+            force: If True, bypass duplicate detection and ingest anyway.
 
         Returns:
             Dict with ingestion results: {filename, document_id, chunk_count}.
+
+        Raises:
+            DuplicateDocumentError: If document content matches existing document and force=False.
         """
-        from exocortex.ingestion import ingest_pdf
+        from exocortex.ingestion import compute_file_hash, ingest_pdf
 
         path = Path(pdf_path)
+        file_hash = compute_file_hash(path)
+
+        if not force:
+            existing_docs = self.vector_store.find_by_file_hash(file_hash)
+            if existing_docs:
+                filenames = ", ".join(d["filename"] for d in existing_docs)
+                raise DuplicateDocumentError(
+                    f"Duplicate document detected: content matches existing document(s) ({filenames})",
+                    file_hash=file_hash,
+                    existing_documents=existing_docs,
+                )
+
         chosen_strategy = strategy or self.settings.chunking_strategy
         chunks = ingest_pdf(
             pdf_path=path,

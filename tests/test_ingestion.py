@@ -9,6 +9,7 @@ from exocortex.ingestion import (
     Chunk,
     PageContent,
     chunk_text,
+    compute_file_hash,
     extract_text_from_pdf,
     generate_document_id,
     ingest_pdf,
@@ -121,20 +122,39 @@ def test_chunk_text_invalid_params():
         )
 
 
+def test_compute_file_hash(tmp_path):
+    """compute_file_hash should return correct SHA-256 for bytes and Path."""
+    content = b"PDF dummy content"
+    import hashlib
+
+    expected_hash = hashlib.sha256(content).hexdigest()
+
+    # Test with bytes
+    assert compute_file_hash(content) == expected_hash
+
+    # Test with Path
+    pdf_file = tmp_path / "test.pdf"
+    pdf_file.write_bytes(content)
+    assert compute_file_hash(pdf_file) == expected_hash
+    assert compute_file_hash(str(pdf_file)) == expected_hash
+
+
 def test_chunk_metadata_dict():
-    """Chunk.to_metadata_dict() should return a flat dict."""
+    """Chunk.to_metadata_dict() should return a flat dict including file_hash if present."""
     chunk = Chunk(
         text="hello",
         document_id="doc123",
         filename="book.pdf",
         page_numbers=[1, 2, 3],
         chunk_index=5,
+        file_hash="abc123hash",
     )
     meta = chunk.to_metadata_dict()
     assert meta["document_id"] == "doc123"
     assert meta["filename"] == "book.pdf"
     assert meta["page_numbers"] == "1,2,3"
     assert meta["chunk_index"] == 5
+    assert meta["file_hash"] == "abc123hash"
 
 
 # --- Integration Test: extract_text_from_pdf ---

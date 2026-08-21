@@ -43,6 +43,7 @@ def sample_chunks() -> list[Chunk]:
             filename="ml_book.pdf",
             page_numbers=[1],
             chunk_index=0,
+            file_hash="hash_ml_book",
         ),
         Chunk(
             text="Neural networks process data in layers.",
@@ -50,6 +51,7 @@ def sample_chunks() -> list[Chunk]:
             filename="ml_book.pdf",
             page_numbers=[1, 2],
             chunk_index=1,
+            file_hash="hash_ml_book",
         ),
         Chunk(
             text="Python is a popular programming language.",
@@ -57,6 +59,7 @@ def sample_chunks() -> list[Chunk]:
             filename="python_book.pdf",
             page_numbers=[5],
             chunk_index=0,
+            file_hash="hash_python_book",
         ),
     ]
 
@@ -146,3 +149,22 @@ def test_delete_nonexistent_document(store):
     """Deleting non-existent document should return 0."""
     deleted = store.delete_document("nonexistent")
     assert deleted == 0
+
+
+def test_find_by_file_hash(store, sample_chunks, sample_embeddings):
+    """Should find existing documents matching a file_hash."""
+    # Before adding
+    assert store.find_by_file_hash("hash_ml_book") == []
+
+    # After adding
+    store.add_chunks(sample_chunks, sample_embeddings)
+    docs = store.find_by_file_hash("hash_ml_book")
+    assert len(docs) == 1
+    assert docs[0]["document_id"] == "doc1"
+    assert docs[0]["filename"] == "ml_book.pdf"
+    assert docs[0]["chunk_count"] == 2
+    assert docs[0]["file_hash"] == "hash_ml_book"
+
+    # Non-existent hash
+    assert store.find_by_file_hash("nonexistent_hash") == []
+    assert store.find_by_file_hash("") == []

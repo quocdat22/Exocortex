@@ -189,8 +189,8 @@ a separate set of chunks.
 ## Future Roadmap
 
 ### Short-term (v0.2)
-- [ ] Sentence-aware chunking
-- [ ] Content-based document deduplication
+- [x] Sentence-aware chunking
+- [x] Content-based document deduplication (SHA-256 raw file byte hash with duplicate warning and force ingest option)
 - [ ] Conversation history (basic session)
 - [ ] Upgrade to larger embedding model option
 

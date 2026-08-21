@@ -149,7 +149,7 @@ class VectorStore:
         """List all unique documents in the vector store.
 
         Returns:
-            List of dicts with document info: {document_id, filename, chunk_count}.
+            List of dicts with document info: {document_id, filename, chunk_count, file_hash}.
         """
         all_metadata = self.collection.get(include=["metadatas"])
 
@@ -161,6 +161,41 @@ class VectorStore:
                 doc_map[doc_id] = {
                     "document_id": doc_id,
                     "filename": meta.get("filename", "unknown"),
+                    "file_hash": meta.get("file_hash", ""),
+                    "chunk_count": 0,
+                }
+            doc_map[doc_id]["chunk_count"] += 1
+
+        return list(doc_map.values())
+
+    def find_by_file_hash(self, file_hash: str) -> list[dict]:
+        """Find existing documents in the vector store matching a file_hash.
+
+        Args:
+            file_hash: SHA-256 content hash of the PDF file.
+
+        Returns:
+            List of dicts with document info: {document_id, filename, chunk_count, file_hash}.
+        """
+        if not file_hash or self.collection.count() == 0:
+            return []
+
+        results = self.collection.get(
+            where={"file_hash": file_hash},
+            include=["metadatas"],
+        )
+
+        if not results or not results.get("metadatas"):
+            return []
+
+        doc_map: dict[str, dict] = {}
+        for meta in results["metadatas"]:
+            doc_id = meta.get("document_id", "unknown")
+            if doc_id not in doc_map:
+                doc_map[doc_id] = {
+                    "document_id": doc_id,
+                    "filename": meta.get("filename", "unknown"),
+                    "file_hash": meta.get("file_hash", file_hash),
                     "chunk_count": 0,
                 }
             doc_map[doc_id]["chunk_count"] += 1

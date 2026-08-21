@@ -33,16 +33,40 @@ class Chunk:
     filename: str  # Original PDF filename
     page_numbers: list[int]  # Page(s) this chunk spans (1-indexed)
     chunk_index: int  # Sequential index within the document
+    file_hash: str = ""  # SHA-256 content hash of the source PDF
     metadata: dict = field(default_factory=dict)  # Additional metadata
 
     def to_metadata_dict(self) -> dict:
         """Convert chunk metadata to a flat dict for ChromaDB storage."""
-        return {
+        data = {
             "document_id": self.document_id,
             "filename": self.filename,
             "page_numbers": ",".join(str(p) for p in self.page_numbers),
             "chunk_index": self.chunk_index,
         }
+        if self.file_hash:
+            data["file_hash"] = self.file_hash
+        return data
+
+
+def compute_file_hash(pdf_source: Path | bytes | str) -> str:
+    """Compute SHA-256 hash of PDF raw bytes.
+
+    Args:
+        pdf_source: Path to PDF or raw bytes.
+
+    Returns:
+        Hex string of SHA-256 hash.
+    """
+    if isinstance(pdf_source, (str, Path)):
+        path = Path(pdf_source)
+        if not path.exists():
+            return hashlib.sha256(str(path).encode()).hexdigest()
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    elif isinstance(pdf_source, bytes):
+        return hashlib.sha256(pdf_source).hexdigest()
+    else:
+        raise TypeError(f"Unsupported type for compute_file_hash: {type(pdf_source)}")
 
 
 def generate_document_id(filename: str) -> str:
@@ -279,4 +303,8 @@ def ingest_pdf(
         chunk_overlap=resolved_chunk_overlap,
         **kwargs,
     )
-    return chunker.chunk(pages=pages, document_id=document_id, filename=filename)
+    chunks = chunker.chunk(pages=pages, document_id=document_id, filename=filename)
+    file_hash = compute_file_hash(pdf_path)
+    for c in chunks:
+        c.file_hash = file_hash
+    return chunks

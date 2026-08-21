@@ -106,6 +106,56 @@ def test_ingest_endpoint_with_strategy(client, monkeypatch):
     assert mock_engine.ingest_and_index.call_args.kwargs.get("strategy") == "sentence_paragraph"
 
 
+def test_ingest_duplicate_detected_returns_409(client, monkeypatch):
+    """POST /ingest with duplicate file and force=False should return 409 Conflict."""
+    from unittest.mock import MagicMock
+
+    import exocortex.api as api_mod
+    from exocortex.retrieval import DuplicateDocumentError
+
+    mock_engine = MagicMock()
+    mock_engine.settings = Settings(deepseek_api_key="test-key")
+    mock_engine.ingest_and_index.side_effect = DuplicateDocumentError(
+        "Duplicate document detected",
+        file_hash="testhash123",
+        existing_documents=[{"document_id": "doc1", "filename": "existing.pdf", "chunk_count": 5}],
+    )
+    monkeypatch.setattr(api_mod, "_engine", mock_engine)
+
+    files = {"file": ("test.pdf", b"%PDF-1.4 sample content", "application/pdf")}
+    response = client.post("/ingest", files=files)
+    assert response.status_code == 409
+    data = response.json()
+    assert data["duplicate"] is True
+    assert data["file_hash"] == "testhash123"
+    assert len(data["existing_documents"]) == 1
+    assert data["existing_documents"][0]["filename"] == "existing.pdf"
+
+
+def test_ingest_duplicate_with_force_returns_200(client, monkeypatch):
+    """POST /ingest with force=True should succeed and return 200."""
+    from unittest.mock import MagicMock
+
+    import exocortex.api as api_mod
+
+    mock_engine = MagicMock()
+    mock_engine.settings = Settings(deepseek_api_key="test-key")
+    mock_engine.ingest_and_index.return_value = {
+        "document_id": "doc_forced",
+        "chunk_count": 8,
+        "filename": "test.pdf",
+    }
+    monkeypatch.setattr(api_mod, "_engine", mock_engine)
+
+    files = {"file": ("test.pdf", b"%PDF-1.4 sample content", "application/pdf")}
+    response = client.post("/ingest?force=true", files=files)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["chunk_count"] == 8
+    assert mock_engine.ingest_and_index.called
+    assert mock_engine.ingest_and_index.call_args.kwargs.get("force") is True
+
+
 # --- Delete endpoint ---
 
 
@@ -135,9 +185,9 @@ def test_ingest_and_query_integration(client, sample_pdf_bytes):
     if sample_pdf_bytes is None:
         pytest.skip("No sample PDF available in data/ebooks/")
 
-    # Ingest
+    # Ingest with force=true to guarantee ingestion even if file is already in store
     files = {"file": ("test_book.pdf", sample_pdf_bytes, "application/pdf")}
-    response = client.post("/ingest", files=files)
+    response = client.post("/ingest?force=true", files=files)
 
     if response.status_code == 503:
         pytest.skip("Ollama not available")

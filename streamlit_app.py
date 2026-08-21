@@ -36,7 +36,7 @@ def api_request(method: str, endpoint: str, **kwargs) -> dict | None:
     try:
         with httpx.Client(timeout=120.0) as client:
             response = getattr(client, method)(url, **kwargs)
-            if response.status_code == 200:
+            if response.status_code in (200, 409):
                 return response.json()
             else:
                 st.error(
@@ -92,6 +92,8 @@ with st.sidebar:
                 with st.expander(f"📄 {doc['filename']}"):
                     st.text(f"ID: {doc['document_id']}")
                     st.text(f"Chunks: {doc['chunk_count']}")
+                    if doc.get("file_hash"):
+                        st.caption(f"Hash: {doc['file_hash'][:12]}...")
                     if st.button("🗑️ Delete", key=f"del_{doc['document_id']}"):
                         result = api_request(
                             "delete", f"/documents/{doc['document_id']}"
@@ -157,6 +159,7 @@ with tab_upload:
     )
 
     if uploaded_file is not None:
+        file_key = f"{uploaded_file.name}_{uploaded_file.size}"
         st.info(
             f"File: {uploaded_file.name} ({uploaded_file.size / 1024 / 1024:.2f} MB)"
         )
@@ -168,30 +171,88 @@ with tab_upload:
             help="Choose the chunking strategy (optimal: recursive character splitting).",
         )
 
-        if st.button("📥 Ingest & Index"):
-            with st.spinner(f"Processing {uploaded_file.name} with '{strategy}' chunking..."):
-                files = {
-                    "file": (
-                        uploaded_file.name,
-                        uploaded_file.getvalue(),
-                        "application/pdf",
-                    )
-                }
-                result = api_request(
-                    "post",
-                    "/ingest",
-                    files=files,
-                    params={"strategy": strategy},
-                )
+        dup_state = st.session_state.get(f"dup_detected_{file_key}")
 
-            if result:
-                st.success(result["message"])
-                st.json(
-                    {
-                        "filename": result["filename"],
-                        "document_id": result["document_id"],
-                        "chunk_count": result["chunk_count"],
-                        "strategy": strategy,
-                    }
+        if dup_state:
+            st.warning("⚠️ **Phát hiện tài liệu trùng lặp (Duplicate Document Detected)!**")
+            st.markdown(
+                f"Nội dung của file này trùng khớp (Hash: `{dup_state.get('file_hash', '')[:12]}...`) "
+                f"với các tài liệu đã tồn tại trong hệ thống:"
+            )
+            for doc in dup_state.get("existing_documents", []):
+                st.markdown(
+                    f"- 📄 **{doc['filename']}** (ID: `{doc['document_id']}`, Chunks: {doc['chunk_count']})"
                 )
-                st.rerun()  # Refresh sidebar document list
+            st.caption(
+                "Bạn vẫn có thể tiếp tục Ingest & Index nếu muốn index lại hoặc lưu dưới dạng tài liệu bổ sung."
+            )
+
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                if st.button("⚡ Vẫn tiếp tục (Force Ingest & Index)", type="primary"):
+                    with st.spinner(f"Đang Ingest {uploaded_file.name} (Force Ingest)..."):
+                        files = {
+                            "file": (
+                                uploaded_file.name,
+                                uploaded_file.getvalue(),
+                                "application/pdf",
+                            )
+                        }
+                        result = api_request(
+                            "post",
+                            "/ingest",
+                            files=files,
+                            params={"strategy": strategy, "force": "true"},
+                        )
+
+                    if result and not result.get("duplicate"):
+                        st.session_state.pop(f"dup_detected_{file_key}", None)
+                        st.success(result.get("message", "Ingested successfully"))
+                        st.json(
+                            {
+                                "filename": result["filename"],
+                                "document_id": result["document_id"],
+                                "chunk_count": result["chunk_count"],
+                                "strategy": strategy,
+                                "forced": True,
+                            }
+                        )
+                        st.rerun()
+
+            with col2:
+                if st.button("❌ Hủy bỏ"):
+                    st.session_state.pop(f"dup_detected_{file_key}", None)
+                    st.rerun()
+
+        else:
+            if st.button("📥 Ingest & Index"):
+                with st.spinner(f"Processing {uploaded_file.name} with '{strategy}' chunking..."):
+                    files = {
+                        "file": (
+                            uploaded_file.name,
+                            uploaded_file.getvalue(),
+                            "application/pdf",
+                        )
+                    }
+                    result = api_request(
+                        "post",
+                        "/ingest",
+                        files=files,
+                        params={"strategy": strategy, "force": "false"},
+                    )
+
+                if result:
+                    if result.get("duplicate"):
+                        st.session_state[f"dup_detected_{file_key}"] = result
+                        st.rerun()
+                    else:
+                        st.success(result.get("message", "Ingested successfully"))
+                        st.json(
+                            {
+                                "filename": result["filename"],
+                                "document_id": result["document_id"],
+                                "chunk_count": result["chunk_count"],
+                                "strategy": strategy,
+                            }
+                        )
+                        st.rerun()  # Refresh sidebar document list
