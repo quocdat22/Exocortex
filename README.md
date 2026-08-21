@@ -56,36 +56,7 @@ Unlike naive RAG implementations, Exocortex features:
 
 ## 🏗️ System Architecture
 
-```mermaid
-flowchart TD
-    subgraph Ingestion_Pipeline ["📥 1. PDF Ingestion & Indexing Pipeline"]
-        PDF[PDF Ebook File] --> PyMuPDF[PyMuPDF Text Extraction]
-        PyMuPDF --> Chunker{Chunking Strategy\nRecursive / Fixed / Semantic / Sentence}
-        Chunker --> OllamaEmb[Ollama Embedding Client\nqwen3-embedding:0.6b]
-        OllamaEmb --> Chroma[(ChromaDB Vector Store)]
-    end
-
-    subgraph Conversational_RAG ["💬 2. Conversational RAG Pipeline"]
-        User([User / Streamlit UI]) -->|POST /sessions/:id/chat\ne.g., 'What are its main benefits?'| API[FastAPI Server]
-        API --> Engine[RAGEngine]
-        Engine -->|Fetch last K turns| SQLite[(SQLite SessionStore\ndata/sessions.db)]
-        
-        Engine -->|History + New Query| Rewriter[LLM: Query Rewriter & Router]
-        Rewriter -->|needs_retrieval: true/false\nstandalone_query: 'What are the main benefits of ...'| RouterDecision{Needs Retrieval?}
-        
-        RouterDecision -->|Yes| QueryEmb[Embed Standalone Query]
-        QueryEmb --> Chroma
-        Chroma -->|Top-K Context Chunks| PromptBuilder[Prompt Builder]
-        
-        RouterDecision -->|No (Chit-chat/Summary)| PromptBuilder
-        
-        PromptBuilder -->|System Context + History + Query| DeepSeek[DeepSeek LLM API\ndeepseek-v4-flash]
-        DeepSeek -->|Grounded Response| Engine
-        
-        Engine -->|Persist User & Assistant Turns + Sources| SQLite
-        Engine -->|ChatResponse JSON| User
-    end
-```
+![Exocortex RAG Pipeline Architecture](assets/rag-pipeline-architecture.svg)
 
 ---
 
@@ -127,15 +98,15 @@ Exocortex resolves this via a multi-turn conversation pipeline:
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User
+    actor User as User
     participant Streamlit as Streamlit UI
     participant Engine as RAG Engine
     participant SQLite as SQLite DB
     participant LLM as DeepSeek LLM
     participant VectorDB as ChromaDB
 
-    User->>Streamlit: "How does ML differ from traditional SWE?"
-    Streamlit->>Engine: POST /sessions/{id}/chat
+    User->>Streamlit: 1. How does ML differ from traditional SWE?
+    Streamlit->>Engine: POST /sessions/:id/chat
     Engine->>VectorDB: Query Vector Search (Turn 1 standalone)
     VectorDB-->>Engine: Top-K Context Chunks
     Engine->>LLM: Generate Answer with Grounded Context
@@ -143,11 +114,11 @@ sequenceDiagram
     Engine->>SQLite: Persist Turn 1
     Engine-->>Streamlit: Render Answer (Page 22-25)
 
-    User->>Streamlit: "What are its main challenges?" (Follow-up)
-    Streamlit->>Engine: POST /sessions/{id}/chat
+    User->>Streamlit: 2. What are its main challenges? (Follow-up)
+    Streamlit->>Engine: POST /sessions/:id/chat
     Engine->>SQLite: Retrieve last 6 messages (Sliding Window)
     Engine->>LLM: Rewrite & Route (History + Follow-up)
-    LLM-->>Engine: {"needs_retrieval": true, "standalone_query": "What are the main challenges of Machine Learning compared to traditional SWE?"}
+    LLM-->>Engine: Standalone Query + needs_retrieval: true
     Engine->>VectorDB: Search ChromaDB with Standalone Query
     VectorDB-->>Engine: Relevant Chunks
     Engine->>LLM: Generate Answer with Context + History

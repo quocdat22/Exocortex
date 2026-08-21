@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1180 820" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="rag-pipeline-architecture-title rag-pipeline-architecture-desc">
+        <title id="rag-pipeline-architecture-title">PDF Ingestion and Conversational RAG Pipeline</title>
+        <desc id="rag-pipeline-architecture-desc">Architecture diagram detailing two interconnected pipelines: PDF document extraction, chunking, and embedding into ChromaDB, and conversational query routing with session history and LLM generation.</desc>
+          <defs>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap');</style>
+          <!-- Arrow markers -->
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/>
+          </marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/>
+          </marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/>
+          </marker>
+        </defs>
+
+        <!-- Background: Clean paper -->
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+
+        <!-- =================================================================
+             ZONE CONTAINERS — Drawn before connectors and nodes
+             ================================================================= -->
+        <!-- Zone 1: Ingestion & Indexing Pipeline -->
+        <rect x="40" y="72" width="260" height="660" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <rect x="52" y="76" width="180" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="142" y="85" fill="rgba(45,49,66,0.50)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">1. PDF INGESTION &amp; INDEXING</text>
+
+        <!-- Zone 2: Conversational RAG Pipeline -->
+        <rect x="324" y="72" width="816" height="660" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <rect x="336" y="76" width="192" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="432" y="85" fill="rgba(45,49,66,0.50)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">2. CONVERSATIONAL RAG ENGINE</text>
+
+        <!-- =================================================================
+             CONNECTORS & LABELS — Drawn before node boxes
+             ================================================================= -->
+
+        <!-- Zone 1 Connectors -->
+        <!-- C1: PDF -> PyMuPDF -->
+        <line x1="170" y1="168" x2="170" y2="224" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- C2: PyMuPDF -> Chunker -->
+        <line x1="170" y1="280" x2="170" y2="336" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- C3: Chunker -> Ollama Embedder -->
+        <line x1="170" y1="392" x2="170" y2="448" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+        <!-- C4: Ollama -> ChromaDB -->
+        <line x1="170" y1="504" x2="170" y2="560" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="136" y="524" width="68" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="170" y="533" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">INDEX CHUNKS</text>
+
+        <!-- Zone 2 Connectors -->
+        <!-- C5: Streamlit UI -> FastAPI (Call) -->
+        <line x1="512" y1="132" x2="568" y2="132" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <rect x="522" y="112" width="36" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="540" y="121" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">POST</text>
+
+        <!-- C6: FastAPI -> Streamlit UI (Return JSON · Coral / Accent) -->
+        <line x1="568" y1="148" x2="512" y2="148" stroke="#eb6c36" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow-accent)"/>
+        <rect x="518" y="156" width="44" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="540" y="165" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">JSON</text>
+
+        <!-- C7: FastAPI -> RAG Engine -->
+        <line x1="728" y1="140" x2="776" y2="140" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <rect x="736" y="120" width="32" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="752" y="129" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">CALL</text>
+
+        <!-- C8: RAG Engine -> SQLite (Fetch last K turns) -->
+        <line x1="952" y1="132" x2="996" y2="132" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="958" y="112" width="32" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="974" y="121" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">READ</text>
+
+        <!-- C9: SQLite -> RAG Engine (Persist / writeback) -->
+        <line x1="996" y1="148" x2="952" y2="148" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <rect x="958" y="156" width="32" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="974" y="165" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SYNC</text>
+
+        <!-- C10: RAG Engine -> Query Rewriter -->
+        <line x1="864" y1="168" x2="864" y2="224" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="808" y="188" width="112" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="864" y="197" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">HISTORY + QUERY</text>
+
+        <!-- C11: Query Rewriter -> Router Decision -->
+        <line x1="864" y1="280" x2="864" y2="336" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="804" y="300" width="120" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="864" y="309" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NEEDS_RETRIEVAL?</text>
+
+        <!-- C12: Router Decision -> Query Embedder (Branch: YES) -->
+        <path d="M 784,364 H 464 Q 456,364 456,372 V 460" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="572" y="344" width="80" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="612" y="353" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">[YES] RETRIEVE</text>
+
+        <!-- C13: Router Decision -> Prompt Builder (Branch: NO · Chit-chat) -->
+        <path d="M 864,392 V 420 Q 864,428 856,428 H 748 Q 740,428 740,436 V 460" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="748" y="408" width="96" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="796" y="417" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">[NO] CHIT-CHAT</text>
+
+        <!-- C14: Query Embedder -> ChromaDB Store (Inter-zone Query Vector) -->
+        <path d="M 368,488 H 312 Q 304,488 304,496 V 580 Q 304,588 296,588 H 270" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="274" y="528" width="60" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="304" y="537" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SEARCH</text>
+
+        <!-- C15: ChromaDB Store -> Prompt Builder (Inter-zone Top-K Chunks) -->
+        <path d="M 270,600 H 644 Q 652,600 652,592 V 516" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <rect x="408" y="608" width="128" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="472" y="617" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">TOP-K CONTEXT CHUNKS</text>
+
+        <!-- C16: Prompt Builder -> DeepSeek LLM -->
+        <line x1="828" y1="488" x2="924" y2="488" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <rect x="838" y="468" width="76" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="876" y="477" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">CONTEXT + Q</text>
+
+        <!-- C17: DeepSeek LLM -> RAG Engine (Grounded Response Return) -->
+        <path d="M 1012,460 V 216 Q 1012,208 1004,208 H 960 Q 952,208 952,200 V 168" fill="none" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <rect x="956" y="324" width="112" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="1012" y="333" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GROUNDED ANSWER</text>
+
+        <!-- =================================================================
+             NODE BOXES — Drawn after connectors & zones
+             ================================================================= -->
+
+        <!-- Zone 1 Nodes -->
+        <!-- Node 1: PDF File (soft / input) -->
+        <rect x="70" y="112" width="200" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="70" y="112" width="200" height="56" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+        <rect x="78" y="120" width="24" height="12" rx="2" fill="transparent" stroke="rgba(122,131,153,0.40)" stroke-width="0.8"/>
+        <text x="90" y="129" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SRC</text>
+        <text x="170" y="144" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">PDF Ebook File</text>
+        <text x="170" y="159" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Raw document source</text>
+
+        <!-- Node 2: PyMuPDF Extractor (backend / step) -->
+        <rect x="70" y="224" width="200" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="70" y="224" width="200" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="78" y="232" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="94" y="241" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PARSE</text>
+        <text x="170" y="256" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">PyMuPDF Extractor</text>
+        <text x="170" y="271" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Text &amp; page layout</text>
+
+        <!-- Node 3: Chunking Engine (backend / step) -->
+        <rect x="70" y="336" width="200" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="70" y="336" width="200" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="78" y="344" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="94" y="353" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CHUNK</text>
+        <text x="170" y="368" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Chunking Strategy</text>
+        <text x="170" y="383" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Recursive · Semantic split</text>
+
+        <!-- Node 4: Ollama Embedder (backend / step) -->
+        <rect x="70" y="448" width="200" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="70" y="448" width="200" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="78" y="456" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="94" y="465" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EMBED</text>
+        <text x="170" y="480" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Ollama Embedding</text>
+        <text x="170" y="495" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">qwen3-embedding:0.6b</text>
+
+        <!-- Node 5: ChromaDB Store (store / shared hub) -->
+        <rect x="70" y="560" width="200" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="70" y="560" width="200" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <rect x="78" y="568" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="94" y="577" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">STORE</text>
+        <text x="170" y="592" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">ChromaDB Store</text>
+        <text x="170" y="607" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Vector index · Top-K</text>
+
+        <!-- Zone 2 Nodes -->
+        <!-- Node 6: Streamlit UI (soft / client) -->
+        <rect x="356" y="112" width="156" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="356" y="112" width="156" height="56" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+        <rect x="364" y="120" width="28" height="12" rx="2" fill="transparent" stroke="rgba(122,131,153,0.40)" stroke-width="0.8"/>
+        <text x="378" y="129" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">USER</text>
+        <text x="434" y="144" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Streamlit UI</text>
+        <text x="434" y="159" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">User session</text>
+
+        <!-- Node 7: FastAPI Server (backend / gateway) -->
+        <rect x="568" y="112" width="160" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="568" y="112" width="160" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="576" y="120" width="24" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="588" y="129" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">API</text>
+        <text x="648" y="144" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">FastAPI Server</text>
+        <text x="648" y="159" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">POST /sessions/:id/chat</text>
+
+        <!-- Node 8: RAGEngine (Focal / Coral) -->
+        <rect x="776" y="112" width="176" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="776" y="112" width="176" height="56" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1.2"/>
+        <rect x="784" y="120" width="32" height="12" rx="2" fill="transparent" stroke="rgba(235,108,54,0.50)" stroke-width="0.8"/>
+        <text x="800" y="129" fill="#eb6c36" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CORE</text>
+        <text x="864" y="144" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">RAG Engine</text>
+        <text x="864" y="159" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Pipeline coordinator</text>
+
+        <!-- Node 9: SQLite Store (store) -->
+        <rect x="996" y="112" width="128" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="996" y="112" width="128" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <rect x="1004" y="120" width="36" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="1022" y="129" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">STORE</text>
+        <text x="1060" y="144" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">SQLite DB</text>
+        <text x="1060" y="159" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">data/sessions.db</text>
+
+        <!-- Node 10: LLM Query Rewriter (external / step) -->
+        <rect x="776" y="224" width="176" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="776" y="224" width="176" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="784" y="232" width="36" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="802" y="241" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">ROUTE</text>
+        <text x="864" y="256" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Query Rewriter</text>
+        <text x="864" y="271" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">History + Anaphora</text>
+
+        <!-- Node 11: Router Decision (branch / decision) -->
+        <rect x="784" y="336" width="160" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="784" y="336" width="160" height="56" rx="6" fill="rgba(45,49,66,0.04)" stroke="#4f5d75" stroke-width="1"/>
+        <rect x="792" y="344" width="40" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="812" y="353" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">BRANCH</text>
+        <text x="864" y="368" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Needs Retrieval?</text>
+        <text x="864" y="383" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">needs_retrieval: bool</text>
+
+        <!-- Node 12: Query Embedder (step) -->
+        <rect x="368" y="460" width="176" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="368" y="460" width="176" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="376" y="468" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="392" y="477" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EMBED</text>
+        <text x="456" y="492" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Query Embedder</text>
+        <text x="456" y="507" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Standalone query vector</text>
+
+        <!-- Node 13: Prompt Builder (step) -->
+        <rect x="652" y="460" width="176" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="652" y="460" width="176" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <rect x="660" y="468" width="36" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+        <text x="678" y="477" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PROMPT</text>
+        <text x="740" y="492" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Prompt Builder</text>
+        <text x="740" y="507" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Context + history assembly</text>
+
+        <!-- Node 14: DeepSeek LLM (external) -->
+        <rect x="924" y="460" width="176" height="56" rx="6" fill="#f5f5f5"/>
+        <rect x="924" y="460" width="176" height="56" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+        <rect x="932" y="468" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+        <text x="946" y="477" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LLM</text>
+        <text x="1012" y="492" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">DeepSeek LLM</text>
+        <text x="1012" y="507" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">deepseek-v4-flash</text>
+
+        <!-- =================================================================
+             LEGEND — Horizontal strip at bottom
+             ================================================================= -->
+        <line x1="40" y1="756" x2="1140" y2="756" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <text x="40" y="772" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+
+        <rect x="40" y="788" width="14" height="10" rx="2" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-width="1"/>
+        <text x="62" y="796" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">Focal Orchestrator</text>
+
+        <rect x="220" y="788" width="14" height="10" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+        <text x="242" y="796" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">Persistent Store / Vector DB</text>
+
+        <rect x="450" y="788" width="14" height="10" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+        <text x="472" y="796" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">External LLM API</text>
+
+        <line x1="630" y1="793" x2="658" y2="793" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+        <text x="666" y="796" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">HTTP / API Call</text>
+
+        <line x1="810" y1="793" x2="838" y2="793" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+        <text x="846" y="796" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">Internal Pipeline Flow</text>
+
+        <line x1="1000" y1="793" x2="1028" y2="793" stroke="#eb6c36" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow-accent)"/>
+        <text x="1036" y="796" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace">ChatResponse JSON</text>
+      </svg>
