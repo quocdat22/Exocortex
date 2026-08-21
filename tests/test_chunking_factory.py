@@ -132,17 +132,17 @@ def test_chunking_module_exports():
 
 
 def test_config_chunking_strategy_default():
-    """Settings should include chunking_strategy with default 'fixed'."""
+    """Settings should include chunking_strategy with default 'recursive'."""
     settings = Settings(deepseek_api_key="test-key")
     assert hasattr(settings, "chunking_strategy")
-    assert settings.chunking_strategy == "fixed"
+    assert settings.chunking_strategy == "recursive"
 
 
 def test_config_chunking_strategy_override(monkeypatch):
     """Settings chunking_strategy should be overridable via environment variable."""
-    monkeypatch.setenv("CHUNKING_STRATEGY", "recursive")
+    monkeypatch.setenv("CHUNKING_STRATEGY", "fixed")
     settings = Settings(deepseek_api_key="test-key")
-    assert settings.chunking_strategy == "recursive"
+    assert settings.chunking_strategy == "fixed"
 
 
 # --- Ingestion Pipeline Integration Tests ---

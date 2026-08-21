@@ -1,0 +1,89 @@
+strategy,entry_id,question,hit,mrr,retrieval_ms
+fixed,1,What are the key components of a production machine learning system beyond the ML algorithm itself?,1.0,1.0,206.69421200000215
+fixed,2,What is the distinction between MLOps and ML Systems Design?,1.0,1.0,268.3787870000742
+fixed,3,What is the formal definition of Machine Learning in terms of its operational framing?,1.0,1.0,304.772452999714
+fixed,4,"How do traditional software engineering solutions and machine learning solutions differ in handling inputs, outputs, and patterns?",1.0,0.5,433.23868999959814
+fixed,5,What approach do companies take to launch an ML product when no initial training data exists?,1.0,1.0,493.7585060006313
+fixed,6,How can computationally intensive problems (such as graphics rendering) be reframed as machine learning problems?,1.0,1.0,256.7826869999408
+fixed,7,What key assumption must hold regarding unseen production data for an ML model to remain effective?,1.0,1.0,415.09383199991134
+fixed,8,Why are repetitive tasks well-suited for machine learning models?,1.0,1.0,222.53025500049262
+fixed,9,Under what conditions is it inappropriate or discouraged to deploy a machine learning solution?,1.0,1.0,306.59691999971983
+fixed,10,How do trade-offs between latency and accuracy differ between enterprise and consumer ML applications?,1.0,1.0,350.0004090001312
+fixed,11,"What is churn prediction in enterprise ML, and why is it economically significant?",1.0,1.0,316.1531420000756
+fixed,12,What are the five primary dimensions of comparison between ML in research and ML in production?,1.0,1.0,398.732077999739
+fixed,13,"Why is model ensembling rarely used in production, despite its popular usage in academic ML competitions?",1.0,1.0,279.5084740000675
+fixed,14,How do computational bottlenecks differ between the model development phase and the deployment phase?,1.0,1.0,363.35033099931024
+fixed,15,"Define latency and throughput, and describe how batching affects both metrics.",1.0,0.5,310.6268569999884
+fixed,16,"Why is reporting average (mean) latency problematic, and what alternative metric should be used instead?",1.0,1.0,363.89062800026295
+fixed,17,Why are high latency percentiles (such as p99) particularly critical for e-commerce platforms like Amazon?,1.0,1.0,400.6838550003522
+fixed,18,How do data characteristics in research settings differ from data characteristics in real-world production?,1.0,1.0,302.3209859993585
+fixed,19,How do machine learning algorithms perpetuate societal bias when deployed at scale?,1.0,1.0,295.64916500021354
+fixed,20,Why is model interpretability essential in production ML systems?,1.0,1.0,288.44764699988445
+fixed,21,What core architectural principle separates traditional software engineering from machine learning systems engineering?,1.0,1.0,313.31146499996976
+fixed,22,What engineering challenges arise when managing data quality and data versioning in ML systems?,1.0,1.0,306.0668349999105
+recursive,1,What are the key components of a production machine learning system beyond the ML algorithm itself?,1.0,1.0,189.8540519996459
+recursive,2,What is the distinction between MLOps and ML Systems Design?,1.0,1.0,215.5201749992557
+recursive,3,What is the formal definition of Machine Learning in terms of its operational framing?,1.0,1.0,510.5485399999452
+recursive,4,"How do traditional software engineering solutions and machine learning solutions differ in handling inputs, outputs, and patterns?",1.0,1.0,290.4801120002958
+recursive,5,What approach do companies take to launch an ML product when no initial training data exists?,1.0,1.0,310.39130600038334
+recursive,6,How can computationally intensive problems (such as graphics rendering) be reframed as machine learning problems?,1.0,1.0,422.54237799897965
+recursive,7,What key assumption must hold regarding unseen production data for an ML model to remain effective?,1.0,1.0,270.052735999343
+recursive,8,Why are repetitive tasks well-suited for machine learning models?,1.0,1.0,332.1031329996913
+recursive,9,Under what conditions is it inappropriate or discouraged to deploy a machine learning solution?,1.0,1.0,374.5204209990334
+recursive,10,How do trade-offs between latency and accuracy differ between enterprise and consumer ML applications?,1.0,1.0,317.4220079999941
+recursive,11,"What is churn prediction in enterprise ML, and why is it economically significant?",1.0,1.0,401.91254599994863
+recursive,12,What are the five primary dimensions of comparison between ML in research and ML in production?,1.0,1.0,399.6260889998666
+recursive,13,"Why is model ensembling rarely used in production, despite its popular usage in academic ML competitions?",1.0,1.0,447.82486800068
+recursive,14,How do computational bottlenecks differ between the model development phase and the deployment phase?,1.0,1.0,284.65672499987704
+recursive,15,"Define latency and throughput, and describe how batching affects both metrics.",1.0,0.5,285.06313000070804
+recursive,16,"Why is reporting average (mean) latency problematic, and what alternative metric should be used instead?",1.0,1.0,268.89376799954334
+recursive,17,Why are high latency percentiles (such as p99) particularly critical for e-commerce platforms like Amazon?,1.0,1.0,346.2972980014456
+recursive,18,How do data characteristics in research settings differ from data characteristics in real-world production?,1.0,1.0,567.0450180004991
+recursive,19,How do machine learning algorithms perpetuate societal bias when deployed at scale?,1.0,1.0,423.64222400101426
+recursive,20,Why is model interpretability essential in production ML systems?,1.0,1.0,275.46857400011504
+recursive,21,What core architectural principle separates traditional software engineering from machine learning systems engineering?,1.0,1.0,499.0409619986167
+recursive,22,What engineering challenges arise when managing data quality and data versioning in ML systems?,1.0,1.0,297.1002319991385
+sentence_paragraph,1,What are the key components of a production machine learning system beyond the ML algorithm itself?,1.0,1.0,278.9174890003778
+sentence_paragraph,2,What is the distinction between MLOps and ML Systems Design?,1.0,1.0,408.0523249995167
+sentence_paragraph,3,What is the formal definition of Machine Learning in terms of its operational framing?,1.0,1.0,304.5551519990113
+sentence_paragraph,4,"How do traditional software engineering solutions and machine learning solutions differ in handling inputs, outputs, and patterns?",1.0,0.5,516.4934490003361
+sentence_paragraph,5,What approach do companies take to launch an ML product when no initial training data exists?,1.0,1.0,407.36922999894887
+sentence_paragraph,6,How can computationally intensive problems (such as graphics rendering) be reframed as machine learning problems?,1.0,1.0,262.6043700001901
+sentence_paragraph,7,What key assumption must hold regarding unseen production data for an ML model to remain effective?,1.0,1.0,339.8725500010187
+sentence_paragraph,8,Why are repetitive tasks well-suited for machine learning models?,1.0,1.0,572.2453870002937
+sentence_paragraph,9,Under what conditions is it inappropriate or discouraged to deploy a machine learning solution?,1.0,1.0,280.85406699938176
+sentence_paragraph,10,How do trade-offs between latency and accuracy differ between enterprise and consumer ML applications?,1.0,1.0,547.7767109987326
+sentence_paragraph,11,"What is churn prediction in enterprise ML, and why is it economically significant?",1.0,1.0,295.5290820009395
+sentence_paragraph,12,What are the five primary dimensions of comparison between ML in research and ML in production?,1.0,1.0,322.5522180000553
+sentence_paragraph,13,"Why is model ensembling rarely used in production, despite its popular usage in academic ML competitions?",1.0,1.0,557.6820660007797
+sentence_paragraph,14,How do computational bottlenecks differ between the model development phase and the deployment phase?,1.0,1.0,420.6958159993519
+sentence_paragraph,15,"Define latency and throughput, and describe how batching affects both metrics.",1.0,0.5,519.846946999678
+sentence_paragraph,16,"Why is reporting average (mean) latency problematic, and what alternative metric should be used instead?",1.0,1.0,448.44570299937914
+sentence_paragraph,17,Why are high latency percentiles (such as p99) particularly critical for e-commerce platforms like Amazon?,1.0,1.0,331.30349299972295
+sentence_paragraph,18,How do data characteristics in research settings differ from data characteristics in real-world production?,1.0,1.0,575.3142679986922
+sentence_paragraph,19,How do machine learning algorithms perpetuate societal bias when deployed at scale?,1.0,1.0,233.53450799913844
+sentence_paragraph,20,Why is model interpretability essential in production ML systems?,1.0,1.0,357.97673799970653
+sentence_paragraph,21,What core architectural principle separates traditional software engineering from machine learning systems engineering?,1.0,1.0,567.2293219995481
+sentence_paragraph,22,What engineering challenges arise when managing data quality and data versioning in ML systems?,1.0,1.0,336.29627900154446
+semantic,1,What are the key components of a production machine learning system beyond the ML algorithm itself?,1.0,1.0,210.36687699961476
+semantic,2,What is the distinction between MLOps and ML Systems Design?,1.0,1.0,289.4802519986115
+semantic,3,What is the formal definition of Machine Learning in terms of its operational framing?,1.0,0.5,516.8756599996414
+semantic,4,"How do traditional software engineering solutions and machine learning solutions differ in handling inputs, outputs, and patterns?",1.0,0.5,284.45195599852013
+semantic,5,What approach do companies take to launch an ML product when no initial training data exists?,1.0,1.0,552.1044639990578
+semantic,6,How can computationally intensive problems (such as graphics rendering) be reframed as machine learning problems?,1.0,1.0,296.6642329993192
+semantic,7,What key assumption must hold regarding unseen production data for an ML model to remain effective?,1.0,1.0,336.60190000045986
+semantic,8,Why are repetitive tasks well-suited for machine learning models?,1.0,1.0,419.82303599979787
+semantic,9,Under what conditions is it inappropriate or discouraged to deploy a machine learning solution?,1.0,1.0,250.1523540013295
+semantic,10,How do trade-offs between latency and accuracy differ between enterprise and consumer ML applications?,1.0,1.0,448.6839159999363
+semantic,11,"What is churn prediction in enterprise ML, and why is it economically significant?",1.0,1.0,415.3055830010999
+semantic,12,What are the five primary dimensions of comparison between ML in research and ML in production?,1.0,1.0,565.8396379985788
+semantic,13,"Why is model ensembling rarely used in production, despite its popular usage in academic ML competitions?",1.0,1.0,261.9428380003228
+semantic,14,How do computational bottlenecks differ between the model development phase and the deployment phase?,1.0,1.0,327.79785899947456
+semantic,15,"Define latency and throughput, and describe how batching affects both metrics.",1.0,0.5,335.25762500175915
+semantic,16,"Why is reporting average (mean) latency problematic, and what alternative metric should be used instead?",1.0,1.0,455.6248709995998
+semantic,17,Why are high latency percentiles (such as p99) particularly critical for e-commerce platforms like Amazon?,1.0,1.0,517.4607200005994
+semantic,18,How do data characteristics in research settings differ from data characteristics in real-world production?,1.0,1.0,298.71783800081175
+semantic,19,How do machine learning algorithms perpetuate societal bias when deployed at scale?,1.0,1.0,363.24034099925484
+semantic,20,Why is model interpretability essential in production ML systems?,1.0,1.0,274.26550400014094
+semantic,21,What core architectural principle separates traditional software engineering from machine learning systems engineering?,1.0,1.0,397.49677300096664
+semantic,22,What engineering challenges arise when managing data quality and data versioning in ML systems?,1.0,1.0,388.3061369997449
