@@ -115,8 +115,9 @@ tab_chat, tab_upload = st.tabs(["💬 Chat", "📤 Upload Ebook"])
 
 with tab_chat:
     current_session = None
-    if st.session_state["current_session_id"]:
-        current_session = api_request("get", f"/sessions/{st.session_state['current_session_id']}")
+    curr_id = st.session_state.get("current_session_id")
+    if curr_id:
+        current_session = api_request("get", f"/sessions/{curr_id}")
         if not current_session:
             st.session_state["current_session_id"] = None
 
