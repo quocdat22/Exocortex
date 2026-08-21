@@ -191,7 +191,7 @@ a separate set of chunks.
 ### Short-term (v0.2)
 - [x] Sentence-aware chunking
 - [x] Content-based document deduplication (SHA-256 raw file byte hash with duplicate warning and force ingest option)
-- [ ] Conversation history (basic session)
+- [x] Conversation history & SQLite session management (with LLM query rewriting & routing)
 - [ ] Upgrade to larger embedding model option
 
 ### Medium-term (v0.3)
