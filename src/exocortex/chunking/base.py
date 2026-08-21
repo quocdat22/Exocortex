@@ -27,7 +27,7 @@ class BaseChunker(ABC):
         Returns:
             List of Chunk objects.
         """
-        pass
+        ...
 
     @staticmethod
     def build_page_segments(

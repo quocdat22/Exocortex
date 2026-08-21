@@ -90,8 +90,7 @@ class RecursiveCharacterChunker(BaseChunker):
                     while total > self.chunk_overlap and current_doc:
                         popped = current_doc.pop(0)
                         total -= len(popped) + len(separator)
-                        if total < 0:
-                            total = 0
+                        total = max(total, 0)
                 current_doc.append(d)
                 total += _len + (len(separator) if len(current_doc) > 1 else 0)
             else:
