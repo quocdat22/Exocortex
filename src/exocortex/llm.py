@@ -45,10 +45,12 @@ def _format_context(results: list[SearchResult]) -> str:
 
     context_parts: list[str] = []
     for i, result in enumerate(results, 1):
-        filename = result.metadata.get("filename", "unknown")
-        pages = result.metadata.get("page_numbers", "?")
+        meta = result.metadata or {}
+        filename = meta.get("filename", "unknown")
+        pages = meta.get("page_numbers", "?")
+        text = result.text or ""
         context_parts.append(
-            f"[Source {i}: {filename}, page(s) {pages}]\n{result.text}"
+            f"[Source {i}: {filename}, page(s) {pages}]\n{text}"
         )
 
     return "\n\n---\n\n".join(context_parts)
@@ -122,13 +124,14 @@ class LLMClient:
         # Extract source info from search results
         sources = []
         for result in search_results:
+            meta = result.metadata or {}
+            text = result.text or ""
             sources.append(
                 {
-                    "filename": result.metadata.get("filename", "unknown"),
-                    "page_numbers": result.metadata.get("page_numbers", "?"),
-                    "text_preview": result.text[:200] + "..."
-                    if len(result.text) > 200
-                    else result.text,
+                    "filename": meta.get("filename", "unknown"),
+                    "page_numbers": meta.get("page_numbers", "?"),
+                    "text": text,
+                    "text_preview": text[:200] + "..." if len(text) > 200 else text,
                 }
             )
 

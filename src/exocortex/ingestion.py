@@ -216,9 +216,9 @@ def _find_pages_for_range(
 
 def ingest_pdf(
     pdf_path: Path,
-    chunk_size: int = 512,
-    chunk_overlap: int = 50,
-    strategy: str = "fixed",
+    chunk_size: int | None = None,
+    chunk_overlap: int | None = None,
+    strategy: str | None = None,
     **kwargs: Any,
 ) -> list[Chunk]:
     """Full ingestion pipeline: PDF → pages → chunks.
@@ -226,13 +226,13 @@ def ingest_pdf(
     This is the main entry point for PDF ingestion. It:
     1. Extracts text from the PDF
     2. Generates a document ID
-    3. Chunks the text using the specified chunking strategy (default: fixed)
+    3. Chunks the text using the specified chunking strategy (default: from Settings or "recursive")
 
     Args:
         pdf_path: Path to the PDF file.
-        chunk_size: Maximum characters per chunk.
-        chunk_overlap: Overlap characters between chunks.
-        strategy: Chunking strategy name (default: "fixed").
+        chunk_size: Maximum characters per chunk (default: from Settings or 512).
+        chunk_overlap: Overlap characters between chunks (default: from Settings or 50).
+        strategy: Chunking strategy name (default: from Settings or "recursive").
         **kwargs: Additional strategy-specific arguments passed to get_chunker.
 
     Returns:
@@ -248,10 +248,35 @@ def ingest_pdf(
     document_id = generate_document_id(filename)
 
     pages = extract_text_from_pdf(pdf_path)
+
+    # Resolve defaults from Settings if not explicitly provided
+    resolved_strategy = strategy
+    resolved_chunk_size = chunk_size
+    resolved_chunk_overlap = chunk_overlap
+
+    if resolved_strategy is None or resolved_chunk_size is None or resolved_chunk_overlap is None:
+        try:
+            from exocortex.config import get_settings
+
+            settings = get_settings()
+            if resolved_strategy is None:
+                resolved_strategy = settings.chunking_strategy
+            if resolved_chunk_size is None:
+                resolved_chunk_size = settings.chunk_size
+            if resolved_chunk_overlap is None:
+                resolved_chunk_overlap = settings.chunk_overlap
+        except (ImportError, AttributeError, ValueError, TypeError):
+            if resolved_strategy is None:
+                resolved_strategy = "recursive"
+            if resolved_chunk_size is None:
+                resolved_chunk_size = 512
+            if resolved_chunk_overlap is None:
+                resolved_chunk_overlap = 50
+
     chunker = get_chunker(
-        strategy=strategy,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
+        strategy=resolved_strategy,
+        chunk_size=resolved_chunk_size,
+        chunk_overlap=resolved_chunk_overlap,
         **kwargs,
     )
     return chunker.chunk(pages=pages, document_id=document_id, filename=filename)

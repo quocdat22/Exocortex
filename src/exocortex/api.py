@@ -14,14 +14,11 @@ import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 
-from exocortex.config import Settings, get_settings
-from exocortex.embedding import EmbeddingClient
-from exocortex.llm import LLMClient
+from exocortex.config import get_settings
 from exocortex.retrieval import RAGEngine
-from exocortex.vectorstore import VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +152,13 @@ async def health_check():
 
 
 @app.post("/ingest", response_model=IngestResponse)
-async def ingest_pdf(file: UploadFile = File(...)):
+async def ingest_pdf(
+    file: UploadFile = File(...),
+    strategy: str | None = Query(
+        None,
+        description="Chunking strategy override (fixed, recursive, sentence_paragraph, semantic)",
+    ),
+):
     """Upload and index a PDF ebook.
 
     The PDF is parsed, chunked, embedded, and stored in ChromaDB.
@@ -185,7 +188,7 @@ async def ingest_pdf(file: UploadFile = File(...)):
         permanent_path.write_bytes(content)
 
         # Ingest and index
-        result = engine.ingest_and_index(tmp_path)
+        result = engine.ingest_and_index(tmp_path, strategy=strategy)
 
         return IngestResponse(
             filename=file.filename,

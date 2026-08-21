@@ -7,7 +7,7 @@ import pytest
 
 from exocortex.config import Settings
 from exocortex.ingestion import Chunk
-from exocortex.vectorstore import VectorStore, SearchResult
+from exocortex.vectorstore import SearchResult, VectorStore
 
 logger = logging.getLogger(__name__)
 

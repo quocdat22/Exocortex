@@ -5,7 +5,7 @@ import logging
 import pytest
 
 from exocortex.config import Settings
-from exocortex.embedding import EmbeddingClient, QUERY_INSTRUCTION
+from exocortex.embedding import QUERY_INSTRUCTION, EmbeddingClient
 
 logger = logging.getLogger(__name__)
 

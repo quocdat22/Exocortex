@@ -156,12 +156,23 @@ def test_ingest_pdf_with_strategy():
     ]
 
     with patch("exocortex.ingestion.extract_text_from_pdf", return_value=dummy_pages):
-        # Test default fixed strategy
-        chunks_fixed = ingest_pdf(Path("dummy.pdf"), chunk_size=100, chunk_overlap=20)
-        assert len(chunks_fixed) > 0
-        assert all(c.filename == "dummy.pdf" for c in chunks_fixed)
+        # Default strategy (recursive from Settings)
+        chunks_default = ingest_pdf(Path("dummy.pdf"), chunk_size=100, chunk_overlap=20)
+        assert len(chunks_default) > 0
+        assert all(c.filename == "dummy.pdf" for c in chunks_default)
+        assert all(c.metadata.get("strategy") == "recursive" for c in chunks_default)
 
-        # Test recursive strategy
+        # Explicit fixed strategy
+        chunks_fixed = ingest_pdf(
+            Path("dummy.pdf"),
+            chunk_size=100,
+            chunk_overlap=20,
+            strategy="fixed",
+        )
+        assert len(chunks_fixed) > 0
+        assert all(c.metadata.get("strategy") == "fixed_size" for c in chunks_fixed)
+
+        # Explicit recursive strategy
         chunks_rec = ingest_pdf(
             Path("dummy.pdf"),
             chunk_size=100,
@@ -169,9 +180,9 @@ def test_ingest_pdf_with_strategy():
             strategy="recursive",
         )
         assert len(chunks_rec) > 0
-        assert all(c.filename == "dummy.pdf" for c in chunks_rec)
+        assert all(c.metadata.get("strategy") == "recursive" for c in chunks_rec)
 
-        # Test sentence_paragraph strategy
+        # Explicit sentence_paragraph strategy
         chunks_sent = ingest_pdf(
             Path("dummy.pdf"),
             chunk_size=100,
@@ -179,7 +190,7 @@ def test_ingest_pdf_with_strategy():
             sentence_overlap=1,
         )
         assert len(chunks_sent) > 0
-        assert all(c.filename == "dummy.pdf" for c in chunks_sent)
+        assert all(c.metadata.get("strategy") == "sentence_paragraph" for c in chunks_sent)
 
 
 def test_ingest_pdf_invalid_strategy():

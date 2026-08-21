@@ -5,7 +5,7 @@ import logging
 import pytest
 
 from exocortex.config import Settings
-from exocortex.llm import LLMClient, LLMResponse, _format_context, SYSTEM_PROMPT
+from exocortex.llm import SYSTEM_PROMPT, LLMClient, LLMResponse, _format_context
 from exocortex.vectorstore import SearchResult
 
 logger = logging.getLogger(__name__)

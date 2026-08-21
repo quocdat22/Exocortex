@@ -1,13 +1,12 @@
 """Tests for Phase 5: FastAPI REST API."""
 
 import logging
-import tempfile
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from exocortex.api import app, _engine, get_engine
+from exocortex.api import app
 from exocortex.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -81,6 +80,30 @@ def test_ingest_non_pdf(client):
     files = {"file": ("test.txt", b"not a pdf", "text/plain")}
     response = client.post("/ingest", files=files)
     assert response.status_code == 400
+
+
+def test_ingest_endpoint_with_strategy(client, monkeypatch):
+    """POST /ingest should pass strategy query param to engine.ingest_and_index."""
+    from unittest.mock import MagicMock
+
+    import exocortex.api as api_mod
+
+    mock_engine = MagicMock()
+    mock_engine.settings = Settings(deepseek_api_key="test-key", chunking_strategy="recursive")
+    mock_engine.ingest_and_index.return_value = {
+        "document_id": "test_id",
+        "chunk_count": 10,
+        "filename": "test.pdf",
+    }
+    monkeypatch.setattr(api_mod, "_engine", mock_engine)
+
+    files = {"file": ("test.pdf", b"%PDF-1.4 sample content", "application/pdf")}
+    response = client.post("/ingest?strategy=sentence_paragraph", files=files)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["chunk_count"] == 10
+    assert mock_engine.ingest_and_index.called
+    assert mock_engine.ingest_and_index.call_args.kwargs.get("strategy") == "sentence_paragraph"
 
 
 # --- Delete endpoint ---

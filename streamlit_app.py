@@ -8,8 +8,8 @@ Provides a web interface for:
 Requires the FastAPI server to be running on localhost:8000.
 """
 
-import streamlit as st
 import httpx
+import streamlit as st
 
 # --- Configuration ---
 API_BASE_URL = "http://localhost:8000"
@@ -92,7 +92,7 @@ with st.sidebar:
                 with st.expander(f"📄 {doc['filename']}"):
                     st.text(f"ID: {doc['document_id']}")
                     st.text(f"Chunks: {doc['chunk_count']}")
-                    if st.button(f"🗑️ Delete", key=f"del_{doc['document_id']}"):
+                    if st.button("🗑️ Delete", key=f"del_{doc['document_id']}"):
                         result = api_request(
                             "delete", f"/documents/{doc['document_id']}"
                         )
@@ -135,7 +135,8 @@ with tab_query:
                 with st.expander(
                     f"📖 Source {i}: {source['filename']} (page {source['page_numbers']})"
                 ):
-                    st.text(source["text_preview"])
+                    chunk_text = source.get("text") or source.get("text_preview", "")
+                    st.markdown(chunk_text)
 
             # Display token usage
             if result.get("usage"):
@@ -160,8 +161,15 @@ with tab_upload:
             f"File: {uploaded_file.name} ({uploaded_file.size / 1024 / 1024:.2f} MB)"
         )
 
+        strategy = st.selectbox(
+            "Chunking Strategy",
+            ["recursive", "fixed", "sentence_paragraph", "semantic"],
+            index=0,
+            help="Choose the chunking strategy (optimal: recursive character splitting).",
+        )
+
         if st.button("📥 Ingest & Index"):
-            with st.spinner(f"Processing {uploaded_file.name}..."):
+            with st.spinner(f"Processing {uploaded_file.name} with '{strategy}' chunking..."):
                 files = {
                     "file": (
                         uploaded_file.name,
@@ -169,7 +177,12 @@ with tab_upload:
                         "application/pdf",
                     )
                 }
-                result = api_request("post", "/ingest", files=files)
+                result = api_request(
+                    "post",
+                    "/ingest",
+                    files=files,
+                    params={"strategy": strategy},
+                )
 
             if result:
                 st.success(result["message"])
@@ -178,6 +191,7 @@ with tab_upload:
                         "filename": result["filename"],
                         "document_id": result["document_id"],
                         "chunk_count": result["chunk_count"],
+                        "strategy": strategy,
                     }
                 )
                 st.rerun()  # Refresh sidebar document list

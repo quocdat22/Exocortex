@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 from exocortex.config import Settings
 from exocortex.embedding import EmbeddingClient
-from exocortex.llm import LLMClient, LLMResponse
-from exocortex.vectorstore import SearchResult, VectorStore
+from exocortex.llm import LLMClient
+from exocortex.vectorstore import VectorStore
 
 logger = logging.getLogger(__name__)
 
@@ -99,26 +100,31 @@ class RAGEngine:
             usage=llm_response.usage,
         )
 
-    def ingest_and_index(self, pdf_path: str | object) -> dict:
-        """Convenience method: ingest a PDF and index it in the vector store.
+    def ingest_and_index(
+        self,
+        pdf_path: str | Path,
+        strategy: str | None = None,
+    ) -> dict:
+        """Full ingestion and indexing pipeline for a PDF.
 
-        Combines Phase 2 (ingestion) and Phase 3 (embedding + storage).
+        Extracts text, chunks, computes embeddings, and stores in ChromaDB.
 
         Args:
             pdf_path: Path to the PDF file.
+            strategy: Optional chunking strategy name. If None, uses self.settings.chunking_strategy.
 
         Returns:
             Dict with ingestion results: {filename, document_id, chunk_count}.
         """
-        from pathlib import Path
-
         from exocortex.ingestion import ingest_pdf
 
         path = Path(pdf_path)
+        chosen_strategy = strategy or self.settings.chunking_strategy
         chunks = ingest_pdf(
             pdf_path=path,
             chunk_size=self.settings.chunk_size,
             chunk_overlap=self.settings.chunk_overlap,
+            strategy=chosen_strategy,
         )
 
         if not chunks:
@@ -135,7 +141,9 @@ class RAGEngine:
         # Store in vector store
         self.vector_store.add_chunks(chunks, embeddings)
 
-        logger.info(f"Ingested {path.name}: {len(chunks)} chunks embedded and stored")
+        logger.info(
+            f"Ingested {path.name} (strategy={chosen_strategy}): {len(chunks)} chunks embedded and stored"
+        )
 
         return {
             "filename": path.name,

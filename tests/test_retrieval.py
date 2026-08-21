@@ -5,7 +5,7 @@ import logging
 import pytest
 
 from exocortex.config import Settings
-from exocortex.retrieval import RAGEngine, QueryResponse
+from exocortex.retrieval import QueryResponse, RAGEngine
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,53 @@ def test_rag_engine_initialization(settings):
     # but won't make API calls
     engine = RAGEngine(settings)
     assert engine.settings == settings
+
+
+def test_rag_engine_ingest_and_index_strategy_propagation(monkeypatch, tmp_path):
+    """RAGEngine.ingest_and_index should pass strategy from settings or argument to ingest_pdf."""
+    from unittest.mock import MagicMock, patch
+
+    from exocortex.ingestion import Chunk
+
+    settings = Settings(deepseek_api_key="test-key", chunking_strategy="recursive")
+    engine = RAGEngine(settings)
+    engine.embedding_client = MagicMock()
+    engine.embedding_client.embed_documents.return_value = [[0.1] * 1024]
+    engine.vector_store = MagicMock()
+
+    sample_chunk = Chunk(
+        text="Sample chunk content",
+        document_id="doc123",
+        filename="sample.pdf",
+        page_numbers=[1],
+        chunk_index=0,
+        metadata={"strategy": "recursive"},
+    )
+
+    pdf_file = tmp_path / "sample.pdf"
+    pdf_file.write_bytes(b"%PDF-1.4 sample")
+
+    with patch("exocortex.ingestion.ingest_pdf", return_value=[sample_chunk]) as mock_ingest:
+        # Default: uses self.settings.chunking_strategy
+        res = engine.ingest_and_index(pdf_file)
+        assert res["document_id"] == "doc123"
+        mock_ingest.assert_called_once_with(
+            pdf_path=pdf_file,
+            chunk_size=512,
+            chunk_overlap=50,
+            strategy="recursive",
+        )
+
+    with patch("exocortex.ingestion.ingest_pdf", return_value=[sample_chunk]) as mock_ingest:
+        # Explicit strategy override
+        res = engine.ingest_and_index(pdf_file, strategy="sentence_paragraph")
+        assert res["document_id"] == "doc123"
+        mock_ingest.assert_called_once_with(
+            pdf_path=pdf_file,
+            chunk_size=512,
+            chunk_overlap=50,
+            strategy="sentence_paragraph",
+        )
 
 
 # --- Full Integration Test ---
