@@ -9,6 +9,8 @@ build/
 .env
 .venv/
 
+data/sessions.db
+
 # Data (user-specific)
 data/ebooks/*.pdf
 chroma_data/
